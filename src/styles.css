@@ -137,8 +137,40 @@
     border-color: var(--color-border);
   }
 
-  body {
+  html, body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    /* Prevent any rogue horizontal scroll on small screens */
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Long emails / serials / URLs must never push the layout wider than the
+     viewport on mobile. Words break instead of overflowing. */
+  p, span, strong, em, h1, h2, h3, h4, h5, h6, li, td, th, label, button, a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Any <table> that isn't already wrapped in an explicit scroll container
+     becomes horizontally scrollable on mobile, so columns never crush into
+     each other. */
+  table {
+    max-width: 100%;
+  }
+
+  /* Stop full-screen modal/overlay grids from clipping when the viewport is
+     narrower than their min-width assumptions. */
+  img, video, svg, canvas {
+    max-width: 100%;
+    height: auto;
   }
 }
+
+/* Utility: wrap any wide region in `.mobile-scroll-x` to opt into smooth
+   horizontal scroll on small screens. */
+@utility mobile-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
