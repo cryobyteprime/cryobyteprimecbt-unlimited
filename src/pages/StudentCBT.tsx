@@ -54,6 +54,8 @@ export default function StudentCBT() {
   const [email, setEmail] = useState('');
   const [serialCode, setSerialCode] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [gateNotice, setGateNotice] = useState<null | 'before' | 'ended'>(null);
+  const lastGateKindRef = useRef<string>('');
 
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [configActive, setConfigActive] = useState(false);
@@ -445,10 +447,12 @@ export default function StudentCBT() {
 
     if (windowState.kind === 'before') {
       setLoginError(`The ${assessmentLabel.toLowerCase()} has not started yet. Try again when the countdown reaches zero.`);
+      setGateNotice('before');
       return;
     }
     if (windowState.kind === 'ended') {
       setLoginError(`The ${assessmentLabel.toLowerCase()} window has closed. New sign-ins are no longer accepted.`);
+      setGateNotice('ended');
       return;
     }
 
