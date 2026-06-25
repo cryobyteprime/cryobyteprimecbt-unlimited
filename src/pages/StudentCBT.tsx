@@ -144,6 +144,20 @@ export default function StudentCBT() {
     return { kind: 'open', msToBoundary: 0 };
   }, [examStartAt, examEndAt, nowTick]);
 
+  // Auto-pop the gate notice when the window crosses a boundary while the
+  // student is on the login screen — e.g. the schedule end-time is reached
+  // mid-session and we need to block further sign-ins with a clear popup.
+  useEffect(() => {
+    if (stage !== 'login') return;
+    if (windowState.kind === 'unset') return;
+    if (lastGateKindRef.current && lastGateKindRef.current !== windowState.kind) {
+      if (windowState.kind === 'before' || windowState.kind === 'ended') {
+        setGateNotice(windowState.kind);
+      }
+    }
+    lastGateKindRef.current = windowState.kind;
+  }, [windowState.kind, stage]);
+
   // Anti-cheat state
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [showTabWarning, setShowTabWarning] = useState(false);
