@@ -935,6 +935,80 @@ export default function StudentCBT() {
               This exam uses fullscreen lockdown, tab monitoring, and randomized question sets. Ensure you are ready before signing in.
             </p>
           </div>
+
+          {gateNotice && (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-slate-950/70 backdrop-blur-md animate-fade-in"
+              role="dialog"
+              aria-modal="true"
+            >
+              <div className="relative max-w-sm w-full bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-zoom-in">
+                <div
+                  className={`absolute inset-x-0 top-0 h-1.5 ${
+                    gateNotice === 'ended'
+                      ? 'bg-gradient-to-r from-rose-500 via-red-500 to-rose-600'
+                      : 'bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500'
+                  }`}
+                />
+                <div className="p-7 text-center space-y-4">
+                  <div
+                    className={`w-16 h-16 mx-auto rounded-2xl flex items-center justify-center border-2 ${
+                      gateNotice === 'ended'
+                        ? 'bg-rose-50 border-rose-200 text-rose-600'
+                        : 'bg-amber-50 border-amber-200 text-amber-600'
+                    }`}
+                  >
+                    {gateNotice === 'ended' ? (
+                      <AlertOctagon className="w-9 h-9" />
+                    ) : (
+                      <Clock className="w-9 h-9" />
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                      {gateNotice === 'ended'
+                        ? `${assessmentLabel} Window Closed`
+                        : `${assessmentLabel} Not Yet Open`}
+                    </h3>
+                    <p className="text-[12px] text-slate-500 leading-relaxed font-normal">
+                      {gateNotice === 'ended'
+                        ? `The scheduled end time has been reached. The ${assessmentLabel.toLowerCase()} gate is now CLOSED and no further sign-ins are being accepted.`
+                        : `The ${assessmentLabel.toLowerCase()} gate is currently CLOSED. It will open automatically when the scheduled start time is reached.`}
+                    </p>
+                  </div>
+
+                  {gateNotice === 'before' && windowState.kind === 'before' && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl py-3 px-4">
+                      <p className="text-[10px] uppercase font-bold font-mono text-amber-700 tracking-wider">Opens in</p>
+                      <p className="font-mono text-2xl font-black tabular-nums text-amber-900 mt-0.5">
+                        {formatWindowCountdown(windowState.msToBoundary)}
+                      </p>
+                    </div>
+                  )}
+
+                  {gateNotice === 'ended' && (
+                    <div className="bg-rose-50 border border-rose-200 rounded-2xl py-3 px-4 text-left">
+                      <p className="text-[11px] text-rose-800 leading-relaxed">
+                        <strong className="font-extrabold">Contact your coordinator</strong> if you believe this is in error. All access logs have been preserved.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setGateNotice(null)}
+                    className={`w-full py-3 rounded-xl font-extrabold text-white text-xs uppercase tracking-wider shadow-md transition-colors ${
+                      gateNotice === 'ended'
+                        ? 'bg-rose-600 hover:bg-rose-700'
+                        : 'bg-amber-500 hover:bg-amber-600'
+                    }`}
+                  >
+                    Acknowledge
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       )}
 
