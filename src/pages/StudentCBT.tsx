@@ -510,15 +510,23 @@ export default function StudentCBT() {
           return;
         }
 
-        // Apply admin-configured ordering + cap. Grading on the server matches by
-        // answer VALUE (A/B/C/D), so we always submit the original key even when
-        // options are reshuffled below.
-        const ordered = randomizeQuestionsCfg ? shuffleArray(questionsPool) : questionsPool.slice();
-        const finalQuestions = ordered.slice(0, Math.max(1, maxQuestions));
+        // Server is authoritative for question selection — every candidate gets
+        // exactly the same N (selected & capped server-side using config).
+        // We trust res.questions verbatim and never re-slice on the client, so
+        // different devices/browsers can never end up with different counts.
+        const finalQuestions = questionsPool;
+        // Server-provided session settings override any stale local overlay,
+        // so per-student behaviour is uniform.
+        const srvDuration = typeof (res as any).durationMinutes === 'number' && (res as any).durationMinutes > 0
+          ? (res as any).durationMinutes
+          : durationMinutes;
+        const srvRandomizeOptions = typeof (res as any).randomizeOptions === 'boolean'
+          ? (res as any).randomizeOptions
+          : randomizeOptionsCfg;
 
         // Build per-question option permutation if option randomization is on.
         const newOptionMap: Record<string, string[]> = {};
-        if (randomizeOptionsCfg) {
+        if (srvRandomizeOptions) {
           for (const q of finalQuestions) {
             if (q.type === 'mcq' && Array.isArray(q.options) && q.options.length === 4) {
               // shuffle original A/B/C/D keys; index i in display = newOptionMap[q.id][i]
@@ -536,7 +544,7 @@ export default function StudentCBT() {
         tabSwitchCountRef.current = 0;
         setShowTabWarning(false);
         setShowFullscreenOverlay(false);
-        setTimeLeft(Math.max(1, durationMinutes) * 60);
+        setTimeLeft(Math.max(1, srvDuration) * 60);
         setSubmitUnlockIn(SUBMIT_UNLOCK_SECONDS);
         setForceSubmitInfo(null);
         setShowSubmitDialog(false);
@@ -544,10 +552,10 @@ export default function StudentCBT() {
 
         supabase.rpc('student_cbt_log', {
           p_email: student.email,
-          p_action: `EXAM_START: Candidate began exam session (${finalQuestions.length} questions drawn from pool of ${questionsPool.length}, duration=${durationMinutes}m)`,
+          p_action: `EXAM_START: Candidate began exam session (${finalQuestions.length} questions, duration=${srvDuration}m)`,
           p_reason: 'Automated exam session tracker',
           p_page: 'Student CBT Exam',
-          p_new_value: JSON.stringify({ classSN: student.classSN, class: student.class, questionCount: finalQuestions.length, poolSize: questionsPool.length, durationMinutes, randomizeQuestions: randomizeQuestionsCfg, randomizeOptions: randomizeOptionsCfg, timestamp: new Date().toISOString() }),
+          p_new_value: JSON.stringify({ classSN: student.classSN, class: student.class, questionCount: finalQuestions.length, poolSize: (res as any).poolSize ?? null, maxQuestions: (res as any).maxQuestions ?? null, durationMinutes: srvDuration, randomizeQuestions: (res as any).randomizeQuestions ?? null, randomizeOptions: srvRandomizeOptions, timestamp: new Date().toISOString() }),
         });
 
         if (monitoring.fullscreen) requestFullscreen();
