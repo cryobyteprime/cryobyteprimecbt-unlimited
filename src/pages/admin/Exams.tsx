@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Question, ExamEligibility, Student, QuestionType, AdminRole } from '../../types';
 import { DB } from '../../lib/database';
+import { supabase } from '@/integrations/supabase/client';
 import { naturalSort } from '../../lib/attendanceUtils';
 import CodeAwareText from '../../components/CodeAwareText';
 import { confirmActionBool } from '../../components/confirmAction';
@@ -194,6 +195,24 @@ export default function Exams({
 
   useEffect(() => {
     loadInitialData();
+  }, []);
+
+  // Live-sync admin Exams page with the remote `config` table so changes
+  // made in another browser/tab show up here within ~1s instead of only on
+  // page reload. Realtime is enabled on `public.config` via the
+  // 20260628_realtime_config.sql migration.
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-exams-config-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'config' }, () => {
+        loadInitialData();
+      })
+      .subscribe();
+    const interval = window.setInterval(() => { loadInitialData(); }, 15000);
+    return () => {
+      supabase.removeChannel(channel);
+      window.clearInterval(interval);
+    };
   }, []);
 
   // --- QUESTION BANK COMPUTED LISTS ---
