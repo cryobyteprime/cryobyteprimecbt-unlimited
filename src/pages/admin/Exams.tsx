@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Question, ExamEligibility, Student, QuestionType, AdminRole } from '../../types';
 import { DB } from '../../lib/database';
+import { supabase } from '@/integrations/supabase/client';
 import { naturalSort } from '../../lib/attendanceUtils';
 import CodeAwareText from '../../components/CodeAwareText';
 import { confirmActionBool } from '../../components/confirmAction';
