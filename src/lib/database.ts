@@ -981,12 +981,27 @@ export const DB = {
     throw new Error('Deletion request not found');
   },
 
-  // System Config
+  // System Config — ALL fields are now persisted in the remote `config` table
+  // (schedule, duration, maxQuestions, randomize, monitoring columns were
+  // added by the 20260628_server_question_allocation.sql migration). The
+  // local overlay is kept only as a fallback merge for any field that the
+  // remote row may not yet contain on legacy installs.
   async getConfig(): Promise<SystemConfig> {
     const win = getExamWindow();
     if (supabase) {
       const { data, error } = await supabase.from('config').select('*').limit(1).single();
-      if (!error && data) return { ...(data as any), ...win };
+      if (!error && data) {
+        // Remote is the source of truth: only fall back to overlay for fields
+        // that are null/undefined remotely.
+        const remote: any = data;
+        const merged: any = { ...remote };
+        for (const k of OVERLAY_KEYS) {
+          if (remote[k] === undefined || remote[k] === null) {
+            if ((win as any)[k] !== undefined) merged[k] = (win as any)[k];
+          }
+        }
+        return merged;
+      }
     }
     const local = getLocalItem<SystemConfig>(STORAGE_KEYS.CONFIG, {
       examActivated: false,
@@ -997,28 +1012,31 @@ export const DB = {
   },
 
   async updateConfig(patch: Partial<SystemConfig>): Promise<SystemConfig> {
-    // Overlay fields (schedule, duration, monitoring, etc.) persist locally
-    // because the remote `config` table may not have those columns.
+    // Mirror overlay fields to localStorage as a best-effort cache so the
+    // admin UI still has something to show if Supabase is unreachable on
+    // the next page load. Source of truth is the remote `config` row.
     const winPatch: ExamOverlay = {};
     for (const key of OVERLAY_KEYS) {
       if (key in patch) (winPatch as any)[key] = (patch as any)[key];
     }
     if (Object.keys(winPatch).length) setExamWindow(winPatch);
 
-    // Strip overlay fields from any remote patch.
-    const remotePatch: any = { ...(patch as any) };
-    for (const key of OVERLAY_KEYS) delete remotePatch[key];
-
-    if (supabase && Object.keys(remotePatch).length) {
-      const { data, error } = await supabase.from('config').update(remotePatch).gte('id', '').select().single();
-      if (!error && data) return { ...(data as any), ...getExamWindow() };
+    if (supabase && Object.keys(patch).length) {
+      const { data, error } = await supabase
+        .from('config')
+        .update(patch as any)
+        .gte('id', '')
+        .select()
+        .single();
+      if (!error && data) return data as any;
+      if (error) console.warn('[updateConfig] remote write failed:', error.message);
     }
     const current = getLocalItem<SystemConfig>(STORAGE_KEYS.CONFIG, {
       examActivated: false,
       protectionPassword: 'admin',
       superadminPassword: 'super'
     });
-    const updated = { ...current, ...remotePatch };
+    const updated = { ...current, ...(patch as any) };
     setLocalItem(STORAGE_KEYS.CONFIG, updated);
     return { ...updated, ...getExamWindow() };
   },
