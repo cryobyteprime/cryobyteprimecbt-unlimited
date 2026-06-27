@@ -129,9 +129,26 @@ export default function StudentCBT() {
       } catch { /* offline / no config — keep defaults */ }
     };
     fetchWindow();
-    const refresh = setInterval(fetchWindow, 30_000);
+    // Realtime: any admin change to public.config is pushed instantly to every
+    // open browser (incognito included), so the schedule/duration/monitoring
+    // settings can never go stale across tabs. The 10s poll is a safety net
+    // in case realtime is briefly disconnected.
+    const refresh = setInterval(fetchWindow, 10_000);
+    const channel = supabase
+      .channel('cbt-config-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'config' },
+        () => { fetchWindow(); },
+      )
+      .subscribe();
     const tick = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => { cancelled = true; clearInterval(refresh); clearInterval(tick); };
+    return () => {
+      cancelled = true;
+      clearInterval(refresh);
+      clearInterval(tick);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const windowState = useMemo<{ kind: 'unset' | 'before' | 'open' | 'ended'; msToBoundary: number }>(() => {
