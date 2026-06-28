@@ -513,6 +513,7 @@ export default function StudentCBT() {
 
       // Already-submitted path: load full review and jump to scorecard.
       if (res.alreadySubmitted && res.result) {
+        clearResume(student.email);
         await loadResultDetail(student);
         setGeneratedResult(res.result as Result);
         setStage('already');
@@ -525,6 +526,46 @@ export default function StudentCBT() {
         const questionsPool: Question[] = (res.questions as Question[]) || [];
         if (questionsPool.length === 0) {
           setLoginError('There are currently no active questions in the Examination database pool.');
+          return;
+        }
+
+        // AUTO-RESUME: if this candidate has a saved attempt for the same
+        // sessionId (network drop, browser/system crash), restore questions,
+        // answers, option permutation, active index, and the remaining time
+        // (deadline is absolute wall-clock so the timer keeps counting even
+        // across a full shutdown). Falls through to a fresh attempt when
+        // nothing resumable is found or the saved deadline already expired
+        // beyond a small grace window.
+        const resumed = loadResume(student.email, res.sessionId || 'active-session');
+        if (resumed && resumed.questions.length > 0) {
+          const remaining = remainingSecondsFromDeadline(resumed.deadlineAt);
+          // Allow resume even at 0s so the student can immediately submit.
+          setOptionMap(resumed.optionMap || {});
+          submittedRef.current = false;
+          setQuestions(resumed.questions);
+          setAnswers(resumed.answers || {});
+          setActiveQIndex(Math.min(resumed.activeQIndex || 0, resumed.questions.length - 1));
+          setTabSwitchCount(0);
+          tabSwitchCountRef.current = 0;
+          setShowTabWarning(false);
+          setShowFullscreenOverlay(false);
+          setTimeLeft(remaining);
+          setSubmitUnlockIn(0); // already past lock-out — let them submit now
+          setForceSubmitInfo(null);
+          setShowSubmitDialog(false);
+          setAssessmentLabel(resumed.assessmentLabel || aType);
+          setStage('quiz');
+
+          supabase.rpc('student_cbt_log', {
+            p_email: student.email,
+            p_action: `EXAM_RESUME: Candidate resumed previous attempt (${resumed.questions.length} questions, ${remaining}s remaining)`,
+            p_reason: 'Auto-resume after network/system interruption',
+            p_page: 'Student CBT Exam',
+            p_new_value: JSON.stringify({ classSN: student.classSN, questionCount: resumed.questions.length, remainingSeconds: remaining, answeredCount: Object.keys(resumed.answers || {}).length, savedAt: resumed.savedAt, timestamp: new Date().toISOString() }),
+          });
+
+          if (monitoring.fullscreen) requestFullscreen();
+          startCountdown();
           return;
         }
 
@@ -567,6 +608,25 @@ export default function StudentCBT() {
         setForceSubmitInfo(null);
         setShowSubmitDialog(false);
         setStage('quiz');
+
+        // Persist the freshly-initialized attempt so a refresh / crash within
+        // the next second still has something to resume from.
+        try {
+          saveResume({
+            email: student.email,
+            classSN: student.classSN,
+            sessionId: res.sessionId || 'active-session',
+            assessmentLabel: aType,
+            questions: finalQuestions,
+            answers: {},
+            optionMap: newOptionMap,
+            activeQIndex: 0,
+            deadlineAt: Date.now() + Math.max(1, srvDuration) * 60 * 1000,
+            durationMinutes: srvDuration,
+            startedAt: Date.now(),
+            savedAt: Date.now(),
+          });
+        } catch {}
 
         supabase.rpc('student_cbt_log', {
           p_email: student.email,
