@@ -7,6 +7,7 @@ import { supabase } from '../integrations/supabase/client';
 import { DB } from '../lib/database';
 import { Student, Question, Result, ExamEligibility, ExamMonitoringSettings, DEFAULT_MONITORING } from '../types';
 import CodeAwareText from '../components/CodeAwareText';
+import { saveResume, loadResume, clearResume, remainingSecondsFromDeadline } from '../lib/examResume';
 
 function formatWindowCountdown(ms: number): string {
   if (ms <= 0) return '00:00:00';
