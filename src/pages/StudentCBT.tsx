@@ -226,6 +226,46 @@ export default function StudentCBT() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
+  // --- AUTO-RESUME: persist live exam state on every change so a network
+  // drop, tab close, or full system shutdown can be resumed on next login.
+  // The deadline stored by the entrance flow is absolute, so this effect
+  // only refreshes the mutable bits (answers, active question, time left).
+  useEffect(() => {
+    if (stage !== 'quiz') return;
+    const student = currentStudentRef.current;
+    const elig = eligibilityRef.current;
+    if (!student || questions.length === 0) return;
+    try {
+      saveResume({
+        email: student.email,
+        classSN: student.classSN,
+        sessionId: elig?.sessionId || 'active-session',
+        assessmentLabel,
+        questions,
+        answers,
+        optionMap,
+        activeQIndex,
+        deadlineAt: Date.now() + timeLeft * 1000,
+        durationMinutes,
+        startedAt: Date.now() - (durationMinutes * 60 - timeLeft) * 1000,
+        savedAt: Date.now(),
+      });
+    } catch {}
+  }, [stage, questions, answers, optionMap, activeQIndex, timeLeft, assessmentLabel, durationMinutes]);
+
+  // --- AUTO-RESUME: when the network comes back online and we have a
+  // failed-but-not-yet-submitted attempt sitting on screen, retry the
+  // submission automatically so the candidate doesn't have to click.
+  useEffect(() => {
+    const onOnline = () => {
+      if (submitError && !submitting && !submittedRef.current && stageRef.current === 'quiz') {
+        triggerAutoSubmission('auto_retry_online');
+      }
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [submitError, submitting]);
+
   // --- ANTI-CHEAT: Block copy/paste/cut/right-click during exam ---
   useEffect(() => {
     if (stage !== 'quiz') return;
