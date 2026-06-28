@@ -814,6 +814,9 @@ export default function StudentCBT() {
       setGeneratedResult(committed);
       // Fetch full review (questions + correct answers) before showing scorecard.
       await loadResultDetail(student);
+      // Submission accepted by the server — drop any auto-resume snapshot so
+      // the next sign-in doesn't try to re-enter the finished attempt.
+      clearResume(student.email);
       setStage(scored.alreadySubmitted ? 'already' : 'scorecard');
     } catch (e: any) {
       submittedRef.current = false;
