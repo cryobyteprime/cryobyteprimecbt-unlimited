@@ -1164,7 +1164,7 @@ export default function Exams({
                 <input
                   type="datetime-local"
                   value={examStartLocal}
-                  onChange={(e) => setExamStartLocal(e.target.value)}
+                  onChange={(e) => { setExamStartLocal(e.target.value); setScheduleDirty(true); }}
                   className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-cyan-500"
                 />
               </label>
@@ -1173,7 +1173,7 @@ export default function Exams({
                 <input
                   type="datetime-local"
                   value={examEndLocal}
-                  onChange={(e) => setExamEndLocal(e.target.value)}
+                  onChange={(e) => { setExamEndLocal(e.target.value); setScheduleDirty(true); }}
                   className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-cyan-500"
                 />
               </label>
