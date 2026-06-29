@@ -341,6 +341,7 @@ export default function Exams({
         );
         setSavedStartIso(startIso);
         setSavedEndIso(endIso);
+        setScheduleDirty(false);
         setScheduleMsg('Schedule saved.');
       } catch (err: any) {
         setScheduleMsg('Save failed: ' + (err?.message || err));
@@ -365,6 +366,7 @@ export default function Exams({
         setSavedEndIso(null);
         setExamStartLocal('');
         setExamEndLocal('');
+        setScheduleDirty(false);
         setScheduleMsg('Schedule cleared.');
       } catch (err: any) {
         setScheduleMsg('Clear failed: ' + (err?.message || err));
