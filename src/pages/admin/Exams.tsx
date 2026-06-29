@@ -67,6 +67,11 @@ export default function Exams({
   const [savedEndIso,    setSavedEndIso]    = useState<string | null>(null);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleMsg,    setScheduleMsg]    = useState<string>('');
+  // True while the admin is editing the Start/End inputs but hasn't saved yet.
+  // Prevents the 15s poll / realtime refresh from wiping unsaved edits.
+  const [scheduleDirty,  setScheduleDirty]  = useState<boolean>(false);
+  const scheduleDirtyRef = React.useRef(false);
+  React.useEffect(() => { scheduleDirtyRef.current = scheduleDirty; }, [scheduleDirty]);
   const [nowTick,        setNowTick]        = useState<number>(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNowTick(Date.now()), 1000);
@@ -163,8 +168,11 @@ export default function Exams({
       setAssessmentType((conf.assessmentType === 'test') ? 'test' : 'exam');
       setSavedStartIso(conf.examStartAt ?? null);
       setSavedEndIso(conf.examEndAt ?? null);
-      setExamStartLocal(isoToLocalInput(conf.examStartAt));
-      setExamEndLocal(isoToLocalInput(conf.examEndAt));
+      // Do NOT clobber the input fields while the admin is mid-edit.
+      if (!scheduleDirtyRef.current) {
+        setExamStartLocal(isoToLocalInput(conf.examStartAt));
+        setExamEndLocal(isoToLocalInput(conf.examEndAt));
+      }
       setExamDuration(typeof conf.examDurationMinutes === 'number' && conf.examDurationMinutes > 0 ? conf.examDurationMinutes : 12);
       setMaxQuestions(typeof conf.maxQuestions === 'number' && conf.maxQuestions > 0 ? conf.maxQuestions : 20);
       setRandomizeQuestions(conf.randomizeQuestions !== false);
@@ -333,6 +341,7 @@ export default function Exams({
         );
         setSavedStartIso(startIso);
         setSavedEndIso(endIso);
+        setScheduleDirty(false);
         setScheduleMsg('Schedule saved.');
       } catch (err: any) {
         setScheduleMsg('Save failed: ' + (err?.message || err));
@@ -357,6 +366,7 @@ export default function Exams({
         setSavedEndIso(null);
         setExamStartLocal('');
         setExamEndLocal('');
+        setScheduleDirty(false);
         setScheduleMsg('Schedule cleared.');
       } catch (err: any) {
         setScheduleMsg('Clear failed: ' + (err?.message || err));
@@ -1156,7 +1166,7 @@ export default function Exams({
                 <input
                   type="datetime-local"
                   value={examStartLocal}
-                  onChange={(e) => setExamStartLocal(e.target.value)}
+                  onChange={(e) => { setExamStartLocal(e.target.value); setScheduleDirty(true); }}
                   className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-cyan-500"
                 />
               </label>
@@ -1165,7 +1175,7 @@ export default function Exams({
                 <input
                   type="datetime-local"
                   value={examEndLocal}
-                  onChange={(e) => setExamEndLocal(e.target.value)}
+                  onChange={(e) => { setExamEndLocal(e.target.value); setScheduleDirty(true); }}
                   className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-cyan-500"
                 />
               </label>
