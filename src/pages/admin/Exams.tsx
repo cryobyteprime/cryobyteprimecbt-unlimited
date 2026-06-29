@@ -153,15 +153,19 @@ export default function Exams({
   const [jsonCopied, setJsonCopied] = useState(false);
 
   // Sync initial system config & lists
-  const loadInitialData = async () => {
-    setLoading(true);
+  const loadInitialData = async (opts?: { skipQuestions?: boolean; silent?: boolean }) => {
+    const skipQuestions = opts?.skipQuestions === true;
+    const silent = opts?.silent === true;
+    if (!silent) setLoading(true);
     try {
-      const qs = await DB.getQuestions();
-      const elgs = await DB.getExamEligibility();
-      const studs = await DB.getStudents();
-      const conf = await DB.getConfig();
+      const [qs, elgs, studs, conf] = await Promise.all([
+        skipQuestions ? Promise.resolve(null) : DB.getQuestions(),
+        DB.getExamEligibility(),
+        DB.getStudents(),
+        DB.getConfig(),
+      ]);
 
-      setQuestions(qs);
+      if (qs) setQuestions(qs);
       setEligibilityList(elgs);
       setStudents(studs);
       setExamActivated(conf.examActivated);
@@ -197,7 +201,7 @@ export default function Exams({
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -213,10 +217,15 @@ export default function Exams({
     const channel = supabase
       .channel('admin-exams-config-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'config' }, () => {
-        loadInitialData();
+        // Config changed remotely → refresh config/eligibility only, leave question bank untouched.
+        loadInitialData({ skipQuestions: true, silent: true });
       })
       .subscribe();
-    const interval = window.setInterval(() => { loadInitialData(); }, 15000);
+    // Lightweight poll: refresh config/eligibility/students every 15s but NEVER re-pull
+    // the question bank (which is large and only changes on explicit admin actions).
+    const interval = window.setInterval(() => {
+      loadInitialData({ skipQuestions: true, silent: true });
+    }, 15000);
     return () => {
       supabase.removeChannel(channel);
       window.clearInterval(interval);
