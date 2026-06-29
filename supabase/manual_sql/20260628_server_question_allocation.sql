@@ -54,11 +54,18 @@ BEGIN
     ORDER BY "updatedAt" DESC NULLS LAST
     LIMIT 1;
 
+  -- A student is considered "marked present in an open session" ONLY when an
+  -- actual att_records row exists for them with status present/late in an
+  -- open att_session. Being listed on the roster (round1/round2Serials) alone
+  -- is NOT enough — that previously allowed unmarked students to walk in.
   SELECT EXISTS (
-    SELECT 1 FROM public.att_sessions
-     WHERE status = 'open'
-       AND ( upper(trim(p_class_sn)) = ANY(SELECT upper(trim(x)) FROM unnest("round1Serials") x)
-          OR upper(trim(p_class_sn)) = ANY(SELECT upper(trim(x)) FROM unnest("round2Serials") x) )
+    SELECT 1
+      FROM public.att_records r
+      JOIN public.att_sessions s ON s.id = r."sessionId"
+     WHERE s.status = 'open'
+       AND r.status IN ('present', 'late')
+       AND ( lower(r.email) = lower(v_student.email)
+          OR upper(trim(r."classSN")) = upper(trim(p_class_sn)) )
   ) INTO v_open_marked;
 
   v_session_id := COALESCE(v_elig."sessionId", 'active-session');
