@@ -456,7 +456,7 @@ export default function AdminPortal() {
                       type="button"
                       disabled={selectedResultIds.size === 0 || bulkDeleting}
                       onClick={async () => {
-                        const rows = examResults.filter((r) => selectedResultIds.has(r.id));
+                        const rows = filteredResults.filter((r) => selectedResultIds.has(r.id));
                         if (!rows.length) return;
                         if (!window.confirm(`Delete ${rows.length} selected result(s)?\n\nA CSV backup of these rows will be downloaded automatically before deletion. This cannot be undone.`)) return;
                         setBulkDeleting(true);
@@ -517,11 +517,15 @@ export default function AdminPortal() {
                           <input
                             type="checkbox"
                             aria-label="Select all results"
-                            checked={examResults.length > 0 && selectedResultIds.size === examResults.length}
+                             checked={filteredResults.length > 0 && filteredResults.every((r) => selectedResultIds.has(r.id))}
                             onChange={() => {
-                              setSelectedResultIds((prev) =>
-                                prev.size === examResults.length ? new Set() : new Set(examResults.map((r) => r.id)),
-                              );
+                              setSelectedResultIds((prev) => {
+                                const allSelected = filteredResults.length > 0 && filteredResults.every((r) => prev.has(r.id));
+                                const next = new Set(prev);
+                                if (allSelected) filteredResults.forEach((r) => next.delete(r.id));
+                                else filteredResults.forEach((r) => next.add(r.id));
+                                return next;
+                              });
                             }}
                           />
                         </th>
@@ -536,9 +540,11 @@ export default function AdminPortal() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-150">
-                    {examResults.length === 0 ? (
-                      <tr><td colSpan={roles.includes('superadmin') ? 8 : 7} className="py-20 text-center text-zinc-400">No submissions yet.</td></tr>
-                    ) : examResults.map((r) => (
+                     {filteredResults.length === 0 ? (
+                       <tr><td colSpan={roles.includes('superadmin') ? 8 : 7} className="py-20 text-center text-zinc-400">
+                         {examResults.length === 0 ? 'No submissions yet.' : `No results for ${resultsClassFilter}.`}
+                       </td></tr>
+                     ) : filteredResults.map((r) => (
                       <tr key={r.id} className={`hover:bg-slate-50/70 ${selectedResultIds.has(r.id) ? 'bg-cyan-50/60' : ''}`}>
                         {roles.includes('superadmin') && (
                           <td className="p-3">
