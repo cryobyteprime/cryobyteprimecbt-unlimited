@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Layers, Lock, Download, Trash2, AlertCircle } from 'lucide-react';
+import { Layers, Lock, Download, Upload, Trash2, AlertCircle } from 'lucide-react';
+import Papa from 'papaparse';
 import { DB } from '../lib/database';
 import { Student, AttSession, AttRecord, AttEditRequest, Result, SystemConfig } from '../types';
 import { useAuth, roleToLegacyAdminRole, permissions, type AppRole } from '../lib/auth';
@@ -34,6 +35,103 @@ export default function AdminPortal() {
   const [loading, setLoading] = useState(false);
   const [selectedResultIds, setSelectedResultIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [resultsClassFilter, setResultsClassFilter] = useState<string>('all');
+  const [importingResults, setImportingResults] = useState(false);
+  const resultsImportInputRef = useRef<HTMLInputElement | null>(null);
+
+  const filteredResults = useMemo(
+    () =>
+      resultsClassFilter === 'all'
+        ? examResults
+        : examResults.filter((r) => r.class === resultsClassFilter),
+    [examResults, resultsClassFilter],
+  );
+
+  const resultClasses = useMemo(
+    () => Array.from(new Set(examResults.map((r) => r.class).filter(Boolean))).sort(),
+    [examResults],
+  );
+
+  const handleImportResultsFile = async (file: File) => {
+    setImportingResults(true);
+    try {
+      const text = await file.text();
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      let rows: any[] = [];
+      if (ext === 'json') {
+        const parsed = JSON.parse(text);
+        rows = Array.isArray(parsed) ? parsed : parsed?.results ?? [];
+      } else if (ext === 'csv') {
+        const res = Papa.parse<Record<string, any>>(text, { header: true, skipEmptyLines: true });
+        rows = res.data;
+      } else {
+        throw new Error('Unsupported file type. Use .csv or .json');
+      }
+      if (!Array.isArray(rows) || rows.length === 0) throw new Error('No rows found in file');
+
+      const pick = (o: Record<string, any>, keys: string[]) => {
+        for (const k of Object.keys(o)) {
+          if (keys.includes(k.trim().toLowerCase())) return o[k];
+        }
+        return undefined;
+      };
+
+      let inserted = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i] as Record<string, any>;
+        try {
+          const email = String(pick(r, ['email']) ?? '').trim().toLowerCase();
+          const classSN = String(pick(r, ['serial', 'classsn', 'class sn']) ?? '').trim().toUpperCase();
+          const name = String(pick(r, ['name', 'candidate']) ?? '').trim();
+          const cls = String(pick(r, ['class']) ?? '').trim();
+          const score = Number(pick(r, ['score']) ?? 0);
+          const total = Number(pick(r, ['total', 'totalquestions']) ?? 0);
+          let pct = Number(pick(r, ['percentage', '%']) ?? NaN);
+          if (!Number.isFinite(pct)) pct = total > 0 ? Math.round((score / total) * 100) : 0;
+          const submittedAt = String(pick(r, ['submittedat', 'submitted']) ?? new Date().toISOString());
+          const examSessionId = String(pick(r, ['examsessionid', 'sessionid']) ?? 'active-session');
+          const answersRaw = pick(r, ['answers']);
+          let answers: Record<string, string> = {};
+          if (answersRaw) {
+            try { answers = typeof answersRaw === 'string' ? JSON.parse(answersRaw) : answersRaw; }
+            catch { answers = {}; }
+          }
+          if (!email || !classSN) { skipped++; continue; }
+          const validClass = (cls === 'Class A' || cls === 'Class B') ? cls : 'Class A';
+          await DB.addResult({
+            email, name, class: validClass as any, classSN,
+            examSessionId, score, percentage: pct, totalQuestions: total,
+            answers, submittedAt,
+            attemptId: 'imp_' + Math.random().toString(36).slice(2, 10),
+          });
+          inserted++;
+        } catch (err: any) {
+          errors.push(`Row ${i + 2}: ${err?.message ?? err}`);
+        }
+      }
+      await triggerAuditLog(
+        `Imported ${inserted} exam result(s) from "${file.name}"`,
+        'results',
+        undefined,
+        { inserted, skipped, errors: errors.length, filename: file.name },
+        'Bulk result import via CSV/JSON',
+      );
+      const fresh = await DB.getResults();
+      setExamResults(fresh);
+      alert(
+        `Imported ${inserted} result(s).` +
+          (skipped ? `\nSkipped ${skipped} row(s) with missing email/serial.` : '') +
+          (errors.length ? `\n${errors.length} error(s):\n${errors.slice(0, 5).join('\n')}` : ''),
+      );
+    } catch (e: any) {
+      alert(`Import failed: ${e?.message ?? e}`);
+    } finally {
+      setImportingResults(false);
+      if (resultsImportInputRef.current) resultsImportInputRef.current.value = '';
+    }
+  };
 
   const buildResultsCsv = (rows: Result[]): string => {
     const headers = ['Serial', 'Name', 'Email', 'Class', 'Score', 'Total', 'Percentage', 'SubmittedAt', 'ExamSessionId', 'AttemptId'];
