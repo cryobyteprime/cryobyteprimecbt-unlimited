@@ -393,28 +393,59 @@ export default function AdminPortal() {
                 <span>CBT exam results</span>
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
+                {resultClasses.length > 0 && (
+                  <select
+                    value={resultsClassFilter}
+                    onChange={(e) => { setResultsClassFilter(e.target.value); setSelectedResultIds(new Set()); }}
+                    className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                    aria-label="Filter results by class"
+                  >
+                    <option value="all">All classes ({examResults.length})</option>
+                    {resultClasses.map((c) => (
+                      <option key={c} value={c}>{c} ({examResults.filter((r) => r.class === c).length})</option>
+                    ))}
+                  </select>
+                )}
+                <input
+                  ref={resultsImportInputRef}
+                  type="file"
+                  accept=".csv,.json"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportResultsFile(f); }}
+                />
+                <button
+                  type="button"
+                  onClick={() => resultsImportInputRef.current?.click()}
+                  disabled={importingResults}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer"
+                  title="Import results from CSV or JSON"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {importingResults ? 'Importing…' : 'Import CSV/JSON'}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
-                    if (examResults.length === 0) return;
+                    if (filteredResults.length === 0) return;
                     const headers = ['Serial', 'Name', 'Email', 'Class', 'Score', 'Total', 'Percentage', 'SubmittedAt', 'ExamSessionId'];
                     const esc = (v: any) => {
                       const s = v === null || v === undefined ? '' : String(v);
                       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
                     };
-                    const rows = examResults.map((r) => [r.classSN, r.name, r.email, r.class, r.score, r.totalQuestions, r.percentage, r.submittedAt, r.examSessionId].map(esc).join(','));
+                    const rows = filteredResults.map((r) => [r.classSN, r.name, r.email, r.class, r.score, r.totalQuestions, r.percentage, r.submittedAt, r.examSessionId].map(esc).join(','));
                     const csv = [headers.join(','), ...rows].join('\n');
                     const blob = new Blob([csv], { type: 'text/csv' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `exam-results-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                    const scope = resultsClassFilter === 'all' ? 'all' : resultsClassFilter.replace(/\s+/g, '-');
+                    a.download = `exam-results-${scope}-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
                     document.body.appendChild(a);
                     a.click();
                     setTimeout(() => { try { document.body.removeChild(a); } catch {} URL.revokeObjectURL(url); }, 1000);
-                    triggerAuditLog('EXPORT_RESULTS_CSV', 'results', undefined, { count: examResults.length }, 'Admin exported exam results as CSV');
+                    triggerAuditLog('EXPORT_RESULTS_CSV', 'results', undefined, { count: filteredResults.length, classFilter: resultsClassFilter }, 'Admin exported exam results as CSV');
                   }}
-                  disabled={examResults.length === 0}
+                  disabled={filteredResults.length === 0}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" /> Export CSV
