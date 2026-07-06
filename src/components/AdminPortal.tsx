@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Layers, Lock, Download, Trash2, AlertCircle } from 'lucide-react';
+import { Layers, Lock, Download, Upload, Trash2, AlertCircle } from 'lucide-react';
+import Papa from 'papaparse';
 import { DB } from '../lib/database';
 import { Student, AttSession, AttRecord, AttEditRequest, Result, SystemConfig } from '../types';
 import { useAuth, roleToLegacyAdminRole, permissions, type AppRole } from '../lib/auth';
@@ -34,6 +35,103 @@ export default function AdminPortal() {
   const [loading, setLoading] = useState(false);
   const [selectedResultIds, setSelectedResultIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [resultsClassFilter, setResultsClassFilter] = useState<string>('all');
+  const [importingResults, setImportingResults] = useState(false);
+  const resultsImportInputRef = useRef<HTMLInputElement | null>(null);
+
+  const filteredResults = useMemo(
+    () =>
+      resultsClassFilter === 'all'
+        ? examResults
+        : examResults.filter((r) => r.class === resultsClassFilter),
+    [examResults, resultsClassFilter],
+  );
+
+  const resultClasses = useMemo(
+    () => Array.from(new Set(examResults.map((r) => r.class).filter(Boolean))).sort(),
+    [examResults],
+  );
+
+  const handleImportResultsFile = async (file: File) => {
+    setImportingResults(true);
+    try {
+      const text = await file.text();
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      let rows: any[] = [];
+      if (ext === 'json') {
+        const parsed = JSON.parse(text);
+        rows = Array.isArray(parsed) ? parsed : parsed?.results ?? [];
+      } else if (ext === 'csv') {
+        const res = Papa.parse<Record<string, any>>(text, { header: true, skipEmptyLines: true });
+        rows = res.data;
+      } else {
+        throw new Error('Unsupported file type. Use .csv or .json');
+      }
+      if (!Array.isArray(rows) || rows.length === 0) throw new Error('No rows found in file');
+
+      const pick = (o: Record<string, any>, keys: string[]) => {
+        for (const k of Object.keys(o)) {
+          if (keys.includes(k.trim().toLowerCase())) return o[k];
+        }
+        return undefined;
+      };
+
+      let inserted = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i] as Record<string, any>;
+        try {
+          const email = String(pick(r, ['email']) ?? '').trim().toLowerCase();
+          const classSN = String(pick(r, ['serial', 'classsn', 'class sn']) ?? '').trim().toUpperCase();
+          const name = String(pick(r, ['name', 'candidate']) ?? '').trim();
+          const cls = String(pick(r, ['class']) ?? '').trim();
+          const score = Number(pick(r, ['score']) ?? 0);
+          const total = Number(pick(r, ['total', 'totalquestions']) ?? 0);
+          let pct = Number(pick(r, ['percentage', '%']) ?? NaN);
+          if (!Number.isFinite(pct)) pct = total > 0 ? Math.round((score / total) * 100) : 0;
+          const submittedAt = String(pick(r, ['submittedat', 'submitted']) ?? new Date().toISOString());
+          const examSessionId = String(pick(r, ['examsessionid', 'sessionid']) ?? 'active-session');
+          const answersRaw = pick(r, ['answers']);
+          let answers: Record<string, string> = {};
+          if (answersRaw) {
+            try { answers = typeof answersRaw === 'string' ? JSON.parse(answersRaw) : answersRaw; }
+            catch { answers = {}; }
+          }
+          if (!email || !classSN) { skipped++; continue; }
+          const validClass = (cls === 'Class A' || cls === 'Class B') ? cls : 'Class A';
+          await DB.addResult({
+            email, name, class: validClass as any, classSN,
+            examSessionId, score, percentage: pct, totalQuestions: total,
+            answers, submittedAt,
+            attemptId: 'imp_' + Math.random().toString(36).slice(2, 10),
+          });
+          inserted++;
+        } catch (err: any) {
+          errors.push(`Row ${i + 2}: ${err?.message ?? err}`);
+        }
+      }
+      await triggerAuditLog(
+        `Imported ${inserted} exam result(s) from "${file.name}"`,
+        'results',
+        undefined,
+        { inserted, skipped, errors: errors.length, filename: file.name },
+        'Bulk result import via CSV/JSON',
+      );
+      const fresh = await DB.getResults();
+      setExamResults(fresh);
+      alert(
+        `Imported ${inserted} result(s).` +
+          (skipped ? `\nSkipped ${skipped} row(s) with missing email/serial.` : '') +
+          (errors.length ? `\n${errors.length} error(s):\n${errors.slice(0, 5).join('\n')}` : ''),
+      );
+    } catch (e: any) {
+      alert(`Import failed: ${e?.message ?? e}`);
+    } finally {
+      setImportingResults(false);
+      if (resultsImportInputRef.current) resultsImportInputRef.current.value = '';
+    }
+  };
 
   const buildResultsCsv = (rows: Result[]): string => {
     const headers = ['Serial', 'Name', 'Email', 'Class', 'Score', 'Total', 'Percentage', 'SubmittedAt', 'ExamSessionId', 'AttemptId'];
@@ -295,28 +393,59 @@ export default function AdminPortal() {
                 <span>CBT exam results</span>
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
+                {resultClasses.length > 0 && (
+                  <select
+                    value={resultsClassFilter}
+                    onChange={(e) => { setResultsClassFilter(e.target.value); setSelectedResultIds(new Set()); }}
+                    className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                    aria-label="Filter results by class"
+                  >
+                    <option value="all">All classes ({examResults.length})</option>
+                    {resultClasses.map((c) => (
+                      <option key={c} value={c}>{c} ({examResults.filter((r) => r.class === c).length})</option>
+                    ))}
+                  </select>
+                )}
+                <input
+                  ref={resultsImportInputRef}
+                  type="file"
+                  accept=".csv,.json"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportResultsFile(f); }}
+                />
+                <button
+                  type="button"
+                  onClick={() => resultsImportInputRef.current?.click()}
+                  disabled={importingResults}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer"
+                  title="Import results from CSV or JSON"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {importingResults ? 'Importing…' : 'Import CSV/JSON'}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
-                    if (examResults.length === 0) return;
+                    if (filteredResults.length === 0) return;
                     const headers = ['Serial', 'Name', 'Email', 'Class', 'Score', 'Total', 'Percentage', 'SubmittedAt', 'ExamSessionId'];
                     const esc = (v: any) => {
                       const s = v === null || v === undefined ? '' : String(v);
                       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
                     };
-                    const rows = examResults.map((r) => [r.classSN, r.name, r.email, r.class, r.score, r.totalQuestions, r.percentage, r.submittedAt, r.examSessionId].map(esc).join(','));
+                    const rows = filteredResults.map((r) => [r.classSN, r.name, r.email, r.class, r.score, r.totalQuestions, r.percentage, r.submittedAt, r.examSessionId].map(esc).join(','));
                     const csv = [headers.join(','), ...rows].join('\n');
                     const blob = new Blob([csv], { type: 'text/csv' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `exam-results-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                    const scope = resultsClassFilter === 'all' ? 'all' : resultsClassFilter.replace(/\s+/g, '-');
+                    a.download = `exam-results-${scope}-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
                     document.body.appendChild(a);
                     a.click();
                     setTimeout(() => { try { document.body.removeChild(a); } catch {} URL.revokeObjectURL(url); }, 1000);
-                    triggerAuditLog('EXPORT_RESULTS_CSV', 'results', undefined, { count: examResults.length }, 'Admin exported exam results as CSV');
+                    triggerAuditLog('EXPORT_RESULTS_CSV', 'results', undefined, { count: filteredResults.length, classFilter: resultsClassFilter }, 'Admin exported exam results as CSV');
                   }}
-                  disabled={examResults.length === 0}
+                  disabled={filteredResults.length === 0}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" /> Export CSV
@@ -327,7 +456,7 @@ export default function AdminPortal() {
                       type="button"
                       disabled={selectedResultIds.size === 0 || bulkDeleting}
                       onClick={async () => {
-                        const rows = examResults.filter((r) => selectedResultIds.has(r.id));
+                        const rows = filteredResults.filter((r) => selectedResultIds.has(r.id));
                         if (!rows.length) return;
                         if (!window.confirm(`Delete ${rows.length} selected result(s)?\n\nA CSV backup of these rows will be downloaded automatically before deletion. This cannot be undone.`)) return;
                         setBulkDeleting(true);
@@ -388,11 +517,15 @@ export default function AdminPortal() {
                           <input
                             type="checkbox"
                             aria-label="Select all results"
-                            checked={examResults.length > 0 && selectedResultIds.size === examResults.length}
+                             checked={filteredResults.length > 0 && filteredResults.every((r) => selectedResultIds.has(r.id))}
                             onChange={() => {
-                              setSelectedResultIds((prev) =>
-                                prev.size === examResults.length ? new Set() : new Set(examResults.map((r) => r.id)),
-                              );
+                              setSelectedResultIds((prev) => {
+                                const allSelected = filteredResults.length > 0 && filteredResults.every((r) => prev.has(r.id));
+                                const next = new Set(prev);
+                                if (allSelected) filteredResults.forEach((r) => next.delete(r.id));
+                                else filteredResults.forEach((r) => next.add(r.id));
+                                return next;
+                              });
                             }}
                           />
                         </th>
@@ -407,9 +540,11 @@ export default function AdminPortal() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-150">
-                    {examResults.length === 0 ? (
-                      <tr><td colSpan={roles.includes('superadmin') ? 8 : 7} className="py-20 text-center text-zinc-400">No submissions yet.</td></tr>
-                    ) : examResults.map((r) => (
+                     {filteredResults.length === 0 ? (
+                       <tr><td colSpan={roles.includes('superadmin') ? 8 : 7} className="py-20 text-center text-zinc-400">
+                         {examResults.length === 0 ? 'No submissions yet.' : `No results for ${resultsClassFilter}.`}
+                       </td></tr>
+                     ) : filteredResults.map((r) => (
                       <tr key={r.id} className={`hover:bg-slate-50/70 ${selectedResultIds.has(r.id) ? 'bg-cyan-50/60' : ''}`}>
                         {roles.includes('superadmin') && (
                           <td className="p-3">
