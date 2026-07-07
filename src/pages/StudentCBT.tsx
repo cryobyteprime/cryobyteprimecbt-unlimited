@@ -736,6 +736,18 @@ export default function StudentCBT() {
     }, 1000);
   };
 
+  // Force-submit when the scheduled assessment END time is reached while a
+  // candidate is mid-quiz. The per-attempt timer already covers duration
+  // exhaustion; this additionally enforces the admin-scheduled window so a
+  // student who signed in near the end can never keep answering past it.
+  useEffect(() => {
+    if (stage !== 'quiz') return;
+    if (windowState.kind !== 'ended') return;
+    if (submittedRef.current) return;
+    triggerAutoSubmission('scheduled_window_ended');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, windowState.kind]);
+
   const formattedTimeLeft = useMemo(() => {
     const mins = Math.floor(timeLeft / 60);
     const secs = timeLeft % 60;
