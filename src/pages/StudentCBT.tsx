@@ -561,7 +561,29 @@ export default function StudentCBT() {
       }
 
       if (!res.examActivated || !res.eligible) {
-        setStage('unauthorized');
+        // Do NOT sign the candidate in. Keep them on the login form with a
+        // clear reason so ineligible students (attendance not marked
+        // present/late, or exam gate not activated) cannot proceed past
+        // the sign-in screen at all.
+        setCurrentStudent(null);
+        const reasons: string[] = [];
+        if (!res.examActivated) {
+          reasons.push(`the ${aType.toLowerCase()} gate has not been activated by your coordinator`);
+        }
+        if (!res.eligible) {
+          reasons.push('your attendance was not marked Present or Late for this session');
+        }
+        setLoginError(
+          `Sign-in blocked — ${reasons.join(' and ')}. Contact your class coordinator if this is in error.`,
+        );
+        supabase.rpc('student_cbt_log', {
+          p_email: student.email,
+          p_action: `LOGIN_BLOCKED: ineligible sign-in attempt (examActivated=${!!res.examActivated}, eligible=${!!res.eligible})`,
+          p_reason: 'Attendance/eligibility gate rejected sign-in',
+          p_page: 'Student CBT Login',
+          p_new_value: JSON.stringify({ classSN: student.classSN, examActivated: !!res.examActivated, eligible: !!res.eligible, attendanceMarked: !!(res as any).attendanceMarked, timestamp: new Date().toISOString() }),
+        });
+        return;
       } else {
         const questionsPool: Question[] = (res.questions as Question[]) || [];
         if (questionsPool.length === 0) {
