@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as ApiPublicCronAutoSubmitExamsRouteImport } from './routes/api/public/cron.auto-submit-exams'
 
 const SupabaseTestRoute = SupabaseTestRouteImport.update({
   id: '/supabase-test',
@@ -45,6 +46,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicCronAutoSubmitExamsRoute =
+  ApiPublicCronAutoSubmitExamsRouteImport.update({
+    id: '/api/public/cron/auto-submit-exams',
+    path: '/api/public/cron/auto-submit-exams',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/supabase-test': typeof SupabaseTestRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/api/public/cron/auto-submit-exams': typeof ApiPublicCronAutoSubmitExamsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +67,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/supabase-test': typeof SupabaseTestRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/api/public/cron/auto-submit-exams': typeof ApiPublicCronAutoSubmitExamsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,12 +77,25 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/supabase-test': typeof SupabaseTestRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/api/public/cron/auto-submit-exams': typeof ApiPublicCronAutoSubmitExamsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/reset-password' | '/supabase-test' | '/admin'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/supabase-test'
+    | '/admin'
+    | '/api/public/cron/auto-submit-exams'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reset-password' | '/supabase-test' | '/admin'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/supabase-test'
+    | '/admin'
+    | '/api/public/cron/auto-submit-exams'
   id:
     | '__root__'
     | '/'
@@ -82,6 +104,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/supabase-test'
     | '/_authenticated/admin'
+    | '/api/public/cron/auto-submit-exams'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -90,6 +113,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SupabaseTestRoute: typeof SupabaseTestRoute
+  ApiPublicCronAutoSubmitExamsRoute: typeof ApiPublicCronAutoSubmitExamsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -136,6 +160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/cron/auto-submit-exams': {
+      id: '/api/public/cron/auto-submit-exams'
+      path: '/api/public/cron/auto-submit-exams'
+      fullPath: '/api/public/cron/auto-submit-exams'
+      preLoaderRoute: typeof ApiPublicCronAutoSubmitExamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -156,6 +187,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SupabaseTestRoute: SupabaseTestRoute,
+  ApiPublicCronAutoSubmitExamsRoute: ApiPublicCronAutoSubmitExamsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
