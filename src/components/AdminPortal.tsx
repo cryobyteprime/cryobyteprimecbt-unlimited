@@ -15,6 +15,8 @@ import Approvals from '../pages/admin/Approvals';
 import DriveSync from '../pages/admin/DriveSync';
 import Users from '../pages/admin/Users';
 import Leaderboard from '../pages/admin/Leaderboard';
+import ExamMonitoring from '../pages/admin/ExamMonitoring';
+import DashboardOverview from './dashboard/DashboardOverview';
 import AdminHeader from './AdminHeader';
 import WipeDataButton from './WipeDataButton';
 import { confirmAction, confirmActionBool } from './confirmAction';
@@ -288,6 +290,7 @@ export default function AdminPortal() {
       case 'questionbank': return permissions.manageExams(roles);
       case 'results': return permissions.viewReports(roles);
       case 'leaderboard': return permissions.viewReports(roles);
+      case 'monitoring': return permissions.viewReports(roles);
       case 'auditlog': return permissions.viewAuditLog(roles);
       case 'settings': return permissions.manageSettings(roles);
       case 'users': return permissions.manageUsers(roles);
