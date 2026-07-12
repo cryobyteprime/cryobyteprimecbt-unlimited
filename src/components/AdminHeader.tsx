@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Menu, X, Users, Calendar, BarChart3, FileEdit, HelpCircle, FileText,
-  Database, Lock, Power, Layers, Bell, ShieldCheck, Trophy
+  Database, Lock, Power, Layers, Bell, ShieldCheck, Trophy, ShieldAlert
 } from 'lucide-react';
 import { permissions, type AppRole } from '../lib/auth';
 import WipeDataButton from './WipeDataButton';
@@ -36,6 +36,7 @@ export default function AdminHeader({
     { id: 'questionbank', label: 'Question Bank', icon: HelpCircle, allowed: permissions.manageExams(roles) },
     { id: 'results', label: 'Exam Results', icon: Layers, allowed: permissions.viewReports(roles) },
     { id: 'leaderboard', label: 'Top Performers', icon: Trophy, allowed: permissions.viewReports(roles) },
+    { id: 'monitoring', label: 'Exam Monitoring', icon: ShieldAlert, allowed: permissions.viewReports(roles) },
     { id: 'auditlog', label: 'Audit Log', icon: Database, allowed: permissions.viewAuditLog(roles), badge: pendingDeletionsCount ? '!' : undefined },
     { id: 'users', label: 'Users & Roles', icon: ShieldCheck, allowed: permissions.manageUsers(roles) },
     { id: 'settings', label: 'Settings & Security', icon: Lock, allowed: permissions.manageSettings(roles) },

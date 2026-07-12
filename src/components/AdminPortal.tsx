@@ -15,6 +15,8 @@ import Approvals from '../pages/admin/Approvals';
 import DriveSync from '../pages/admin/DriveSync';
 import Users from '../pages/admin/Users';
 import Leaderboard from '../pages/admin/Leaderboard';
+import ExamMonitoring from '../pages/admin/ExamMonitoring';
+import DashboardOverview from './dashboard/DashboardOverview';
 import AdminHeader from './AdminHeader';
 import WipeDataButton from './WipeDataButton';
 import { confirmAction, confirmActionBool } from './confirmAction';
@@ -288,6 +290,7 @@ export default function AdminPortal() {
       case 'questionbank': return permissions.manageExams(roles);
       case 'results': return permissions.viewReports(roles);
       case 'leaderboard': return permissions.viewReports(roles);
+      case 'monitoring': return permissions.viewReports(roles);
       case 'auditlog': return permissions.viewAuditLog(roles);
       case 'settings': return permissions.manageSettings(roles);
       case 'users': return permissions.manageUsers(roles);
@@ -319,56 +322,17 @@ export default function AdminPortal() {
         )}
 
         {safePage === 'dashboard' && (
-          <div className="space-y-6 animate-fade-in text-xs">
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="bg-white p-3 sm:p-4.5 border border-slate-200 rounded-2xl shadow-sm min-w-0">
-                <span className="text-[10px] uppercase font-mono font-bold text-slate-400 block tracking-widest truncate">Roster Enrolled</span>
-                <strong className="text-xl sm:text-2xl font-black text-slate-900 block mt-1.5">{dashboardStats.totalSCount}</strong>
-              </div>
-              <div className="bg-white p-3 sm:p-4.5 border border-slate-200 rounded-2xl shadow-sm min-w-0">
-                <span className="text-[10px] uppercase font-mono font-bold text-slate-400 block tracking-widest truncate">Lesson Sessions</span>
-                <strong className="text-xl sm:text-2xl font-black text-slate-900 block mt-1.5">{dashboardStats.totalSessCount}</strong>
-              </div>
-              <div className="bg-white p-3 sm:p-4.5 border border-slate-200 rounded-2xl shadow-sm min-w-0">
-                <span className="text-[10px] uppercase font-mono font-bold text-slate-400 block tracking-widest truncate">Attendance Ratio</span>
-                <strong className={`text-xl sm:text-2xl font-black block mt-1.5 ${dashboardStats.avgPct >= 75 ? 'text-green-600' : 'text-amber-600'}`}>{dashboardStats.avgPct}%</strong>
-              </div>
-              <div className="bg-white p-3 sm:p-4.5 border border-slate-200 rounded-2xl shadow-sm min-w-0">
-                <span className="text-[10px] uppercase font-mono font-bold text-slate-400 block tracking-widest truncate">Active CBT</span>
-                <strong className={`text-lg sm:text-xl font-black block mt-2 ${dashboardStats.runningCBT ? 'text-green-600' : 'text-slate-400'}`}>
-                  {dashboardStats.runningCBT ? '● Open' : '○ Closed'}
-                </strong>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-slate-900 text-sm pb-2 border-b">Active Enrolling Check-ins</h3>
-              {dashboardStats.openSessions.length === 0 ? (
-                <div className="py-10 text-center text-slate-400 text-xs">
-                  No active sessions. Go to <strong className="text-cyan-600">Attendance Sessions</strong> to create one.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {dashboardStats.openSessions.map((s) => (
-                    <div key={s.id} className="p-4 border border-cyan-100 bg-cyan-50/10 rounded-2xl flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="space-y-1 min-w-0">
-                        <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-extrabold font-mono uppercase bg-cyan-50 text-cyan-700 border border-cyan-150">Open</span>
-                        <h4 className="font-extrabold text-slate-900 text-sm mt-0.5 break-words">{s.topic} — <span className="text-cyan-600 text-xs">({s.class})</span></h4>
-                        <p className="text-[10px] text-slate-400 font-mono break-all">{s.date} · R1: {s.round1Serials?.length || 0} · R2: {s.round2Serials?.length || 0}</p>
-                      </div>
-                      <button
-                        onClick={() => setCurrentAdminPage('attendance')}
-                        className="shrink-0 w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-xs font-bold cursor-pointer"
-                      >
-                        Open Check-in
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <DashboardOverview
+            students={students}
+            attSessions={attSessions}
+            attRecords={attRecords}
+            examResults={examResults}
+            sysConfig={sysConfig}
+            openSessions={dashboardStats.openSessions}
+            onNavigate={setCurrentAdminPage}
+          />
         )}
+        {safePage === 'monitoring' && <ExamMonitoring />}
 
         {safePage === 'attendance' && (
           <Attendance adminRole={adminRole} adminEmail={adminEmail} triggerAuditLog={triggerAuditLog} protectionPasswordConfirm={triggerPasswordConfirm} />
