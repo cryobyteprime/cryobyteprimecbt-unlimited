@@ -148,4 +148,10 @@ $function$;
 
 -- Ensure audit_log broadcasts realtime events so the Exam Monitoring panel
 -- updates live. Safe to re-run.
-ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_log;
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_log;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+END $$;
