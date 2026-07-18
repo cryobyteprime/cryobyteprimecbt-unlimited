@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ShieldAlert, Search, Download, RefreshCw, AlertTriangle, Ban, Eye,
+  ShieldAlert, Search, Download, RefreshCw, AlertTriangle, Ban, Eye, Radio,
   Activity, Users as UsersIcon, Clock, Filter,
 } from 'lucide-react';
 import {
@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { DB } from '../../lib/database';
 import { AuditLog } from '../../types';
+import { supabase } from '@/integrations/supabase/client';
 
 // Categories mined out of action strings written by StudentCBT + server auto-submit.
 const VIOLATION_PATTERNS: { key: string; label: string; test: (a: string) => boolean; color: string }[] = [
@@ -23,6 +24,9 @@ const VIOLATION_PATTERNS: { key: string; label: string; test: (a: string) => boo
   { key: 'MULTI_DEVICE',  label: 'Multi-device / IP',     test: (a) => /MULTI_DEVICE|DUPLICATE_DEVICE|IP_MISMATCH/i.test(a), color: '#22c55e' },
   { key: 'MALPRACTICE',   label: 'Malpractice penalty',   test: (a) => /MALPRACTICE/i.test(a),         color: '#dc2626' },
   { key: 'AUTO_SUBMIT',   label: 'Forced auto-submit',    test: (a) => /auto_submit|scheduled_window_ended|tab_violation_auto_submit|malpractice_exhausted/i.test(a), color: '#0891b2' },
+  { key: 'EXAM_START',    label: 'Exam started',          test: (a) => /^EXAM_START|EXAM_RESUME/i.test(a), color: '#10b981' },
+  { key: 'EXAM_SUBMIT',   label: 'Exam submitted',        test: (a) => /^EXAM_SUBMIT/i.test(a),         color: '#3b82f6' },
+  { key: 'LOGIN_BLOCKED', label: 'Login blocked',         test: (a) => /LOGIN_BLOCKED/i.test(a),        color: '#b91c1c' },
 ];
 
 function classify(action: string): string {
@@ -33,12 +37,12 @@ function classify(action: string): string {
 function isViolation(log: AuditLog): boolean {
   if (log.page !== 'student-cbt') return false;
   const a = log.action || '';
-  return /VIOLATION|MALPRACTICE|SCREENSHOT|SCREEN_CAPTURE|FULLSCREEN|COPY|PASTE|CUT|RIGHT_CLICK|DEVTOOLS|PRINT|FOCUS|BLUR|MULTI_DEVICE|DUPLICATE_DEVICE|IP_MISMATCH|tab_violation_auto_submit|malpractice_exhausted|scheduled_window_ended|LOGIN_BLOCKED/i.test(a);
+  return /VIOLATION|MALPRACTICE|SCREENSHOT|SCREEN_CAPTURE|FULLSCREEN|COPY|PASTE|CUT|RIGHT_CLICK|DEVTOOLS|PRINT|FOCUS|BLUR|MULTI_DEVICE|DUPLICATE_DEVICE|IP_MISMATCH|tab_violation_auto_submit|malpractice_exhausted|scheduled_window_ended|LOGIN_BLOCKED|EXAM_START|EXAM_RESUME|EXAM_SUBMIT/i.test(a);
 }
 
 function severityOf(key: string): 'low' | 'medium' | 'high' {
   if (['MALPRACTICE', 'AUTO_SUBMIT', 'MULTI_DEVICE', 'SCREEN_CAPTURE'].includes(key)) return 'high';
-  if (['TAB_SWITCH', 'FULLSCREEN', 'SCREENSHOT', 'COPY_PASTE'].includes(key)) return 'medium';
+  if (['TAB_SWITCH', 'FULLSCREEN', 'SCREENSHOT', 'COPY_PASTE', 'LOGIN_BLOCKED'].includes(key)) return 'medium';
   return 'low';
 }
 
@@ -51,6 +55,7 @@ const sevBadge: Record<string, string> = {
 export default function ExamMonitoring() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [live, setLive] = useState(false);
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -66,7 +71,36 @@ export default function ExamMonitoring() {
       setLoading(false);
     }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Live subscription to audit_log so join/submit/blocked/violation events
+    // appear on the monitoring panel without a manual refresh.
+    const channel = supabase
+      .channel('exam-monitoring-audit')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'audit_log' },
+        (payload) => {
+          const row = payload.new as any;
+          const log: AuditLog = {
+            id: row.id,
+            userId: row.userId ?? row.user_id ?? '',
+            userName: row.userName ?? row.user_name ?? '',
+            userRole: row.userRole ?? row.user_role ?? '',
+            action: row.action ?? '',
+            page: row.page ?? '',
+            reason: row.reason ?? '',
+            oldValue: row.oldValue ?? row.old_value ?? '',
+            newValue: row.newValue ?? row.new_value ?? '',
+            timestamp: row.timestamp ?? new Date().toISOString(),
+          } as AuditLog;
+          if (!isViolation(log)) return;
+          setLogs((prev) => (prev.some((l) => l.id === log.id) ? prev : [log, ...prev]));
+        },
+      )
+      .subscribe((status) => setLive(status === 'SUBSCRIBED'));
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const now = Date.now();
   const scoped = useMemo(() => {
@@ -160,6 +194,17 @@ export default function ExamMonitoring() {
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <ShieldAlert className="w-6 h-6 text-rose-600" />
           Exam Monitoring &amp; Violations
+          <span
+            className={`ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+              live
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-slate-100 text-slate-500 border-slate-200'
+            }`}
+            title={live ? 'Live subscription active' : 'Reconnecting…'}
+          >
+            <Radio className={`w-3 h-3 ${live ? 'animate-pulse' : ''}`} />
+            {live ? 'LIVE' : 'OFFLINE'}
+          </span>
         </h2>
         <div className="flex items-center gap-2">
           <button onClick={load} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold cursor-pointer">
