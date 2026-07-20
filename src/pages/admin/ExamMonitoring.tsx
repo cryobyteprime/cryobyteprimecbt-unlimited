@@ -35,8 +35,19 @@ function classify(action: string): string {
 }
 
 function isViolation(log: AuditLog): boolean {
-  if (log.page !== 'student-cbt') return false;
+  // StudentCBT writes audit rows with page values like 'Student CBT Login'
+  // and 'Student CBT Exam'. Server auto-submit and other exam-related
+  // sources may not set page at all. Accept anything that either looks
+  // like an exam page OR matches an exam-related action pattern, so
+  // join / submit / blocked / disconnect / violation events all surface
+  // on the monitoring panel live.
+  const page = (log.page || '').toLowerCase();
+  const isExamPage =
+    page.includes('cbt') || page.includes('exam') || page === 'student-cbt';
   const a = log.action || '';
+  if (!isExamPage && !/EXAM_|LOGIN_BLOCKED|MALPRACTICE|VIOLATION|auto_submit|scheduled_window_ended/i.test(a)) {
+    return false;
+  }
   return /VIOLATION|MALPRACTICE|SCREENSHOT|SCREEN_CAPTURE|FULLSCREEN|COPY|PASTE|CUT|RIGHT_CLICK|DEVTOOLS|PRINT|FOCUS|BLUR|MULTI_DEVICE|DUPLICATE_DEVICE|IP_MISMATCH|tab_violation_auto_submit|malpractice_exhausted|scheduled_window_ended|LOGIN_BLOCKED|EXAM_START|EXAM_RESUME|EXAM_SUBMIT/i.test(a);
 }
 
