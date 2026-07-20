@@ -1023,66 +1023,32 @@ export default function StudentCBT() {
               <p className="text-[11px] text-slate-450 leading-relaxed font-normal">Enter your designated course credentials to check-in your {assessmentLabel.toLowerCase()} candidate registry.</p>
             </div>
 
-            {windowState.kind === 'unset' ? (
-              <div className="p-3 rounded-xl border text-left font-sans leading-relaxed flex items-start gap-2 bg-slate-50 border-slate-200 text-slate-700">
+            {windowState.kind !== 'unset' && (
+              <div
+                className={`p-3 rounded-xl border text-left font-sans leading-relaxed flex items-start gap-2 ${
+                  windowState.kind === 'before'
+                    ? 'bg-amber-50 border-amber-200 text-amber-800'
+                    : windowState.kind === 'open'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-rose-50 border-rose-200 text-rose-800'
+                }`}
+              >
                 <Clock className="w-4 h-4 mt-0.5 shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-extrabold text-[11px] uppercase tracking-wide">Awaiting schedule</p>
-                  <p className="text-[11px] mt-0.5">No {assessmentLabel.toLowerCase()} window has been published yet. Please wait for your invigilator's announcement.</p>
-                </div>
-              </div>
-            ) : (
-              <div
-                className={`p-3.5 rounded-xl border text-left font-sans leading-relaxed space-y-2 ${
-                  windowState.kind === 'before'
-                    ? 'bg-amber-50 border-amber-200 text-amber-900'
-                    : windowState.kind === 'open'
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                      : 'bg-rose-50 border-rose-200 text-rose-900'
-                }`}
-                role="status"
-                aria-live="polite"
-              >
-                <div className="flex items-start gap-2">
-                  <Clock className="w-4 h-4 mt-0.5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-extrabold text-[11px] uppercase tracking-wide">
-                      {windowState.kind === 'before' && `${assessmentLabel} starts in`}
-                      {windowState.kind === 'open'   && `${assessmentLabel} in progress — ends in`}
-                      {windowState.kind === 'ended'  && `${assessmentLabel} window closed`}
+                  <p className="font-extrabold text-[11px]">
+                    {windowState.kind === 'before' && `${assessmentLabel} starts in`}
+                    {windowState.kind === 'open'   && `${assessmentLabel} ends in`}
+                    {windowState.kind === 'ended'  && `${assessmentLabel} window closed`}
+                  </p>
+                  {windowState.kind !== 'ended' && (
+                    <p className="font-mono text-base font-black tracking-tight tabular-nums">
+                      {formatWindowCountdown(windowState.msToBoundary)}
                     </p>
-                    {windowState.kind !== 'ended' ? (
-                      <p className="font-mono text-2xl font-black tracking-tight tabular-nums leading-tight">
-                        {formatWindowCountdown(windowState.msToBoundary)}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] mt-0.5">New sign-ins are no longer accepted.</p>
-                    )}
-                  </div>
-                </div>
-                <div className="text-[10px] font-mono border-t border-current/10 pt-1.5 space-y-0.5 opacity-80">
-                  {examStartAt && (
-                    <p><span className="font-bold">STARTS:</span> {new Date(examStartAt).toLocaleString()}</p>
                   )}
-                  {examEndAt && (
-                    <p><span className="font-bold">ENDS:&nbsp;&nbsp;</span> {new Date(examEndAt).toLocaleString()}</p>
+                  {windowState.kind === 'ended' && (
+                    <p className="text-[11px]">New sign-ins are no longer accepted.</p>
                   )}
                 </div>
-                {windowState.kind === 'before' && (
-                  <p className="text-[11px] font-semibold border-t border-current/10 pt-1.5">
-                    ⚠ Sign-in is locked until the scheduled start time. Keep this page open — the portal will unlock automatically.
-                  </p>
-                )}
-                {windowState.kind === 'ended' && (
-                  <p className="text-[11px] font-semibold border-t border-current/10 pt-1.5">
-                    ⚠ The {assessmentLabel.toLowerCase()} window has closed. Contact your invigilator if you were unable to submit.
-                  </p>
-                )}
-                {windowState.kind === 'open' && (
-                  <p className="text-[11px] font-semibold border-t border-current/10 pt-1.5">
-                    ✓ Portal is open. Sign in now — remaining time counts down live.
-                  </p>
-                )}
               </div>
             )}
 
