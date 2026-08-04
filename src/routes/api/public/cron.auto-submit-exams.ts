@@ -13,8 +13,8 @@ async function handle(request: Request): Promise<Response> {
   if (!secret || provided !== secret) {
     return new Response('unauthorized', { status: 401 });
   }
-  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-  const { data, error } = await supabaseAdmin.rpc('auto_submit_expired_exams' as never);
+  const { supabaseExternalAdmin: supabaseAdmin } = await import('@/integrations/supabase/external.server');
+  const { data, error } = await supabaseAdmin.rpc('auto_submit_expired_exams');
   if (error) {
     return new Response(JSON.stringify({ ok: false, error: error.message }), {
       status: 500,

@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import { DB } from '../../lib/database';
 import { AuditLog } from '../../types';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/external';
 
 // Categories mined out of action strings written by StudentCBT + server auto-submit.
 const VIOLATION_PATTERNS: { key: string; label: string; test: (a: string) => boolean; color: string }[] = [
