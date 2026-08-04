@@ -36,7 +36,7 @@ export const inviteUser = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     // Authorize caller
-    const { data: isSuper, error: roleErr } = await context.supabase
+    const { data: isSuper, error: roleErr } = await (context.supabase as unknown as AnyDb)
       .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' as any });
     if (roleErr) throw new Error(roleErr.message);
     if (!isSuper) throw new Error('Forbidden: superadmin only');
@@ -69,7 +69,7 @@ export const inviteUser = createServerFn({ method: 'POST' })
 export const listUsers = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isSuper } = await context.supabase
+    const { data: isSuper } = await (context.supabase as unknown as AnyDb)
       .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' as any });
     if (!isSuper) throw new Error('Forbidden: superadmin only');
 
@@ -100,7 +100,7 @@ export const setUserRole = createServerFn({ method: 'POST' })
     z.object({ userId: z.string().uuid(), role: RoleEnum }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    const { data: isSuper } = await context.supabase
+    const { data: isSuper } = await (context.supabase as unknown as AnyDb)
       .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' as any });
     if (!isSuper) throw new Error('Forbidden: superadmin only');
 
@@ -117,7 +117,7 @@ export const deleteUser = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { data: isSuper } = await context.supabase
+    const { data: isSuper } = await (context.supabase as unknown as AnyDb)
       .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' as any });
     if (!isSuper) throw new Error('Forbidden: superadmin only');
     if (data.userId === context.userId) throw new Error('Cannot delete your own account');

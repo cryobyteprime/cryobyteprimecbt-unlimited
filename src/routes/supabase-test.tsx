@@ -21,7 +21,7 @@ function SupabaseTest() {
       const out: TableResult[] = [];
       for (const t of TABLES) {
         try {
-          const { data, error, count } = await supabase
+          const { data, error, count } = await db
             .from(t)
             .select('*', { count: 'exact' })
             .limit(3);
