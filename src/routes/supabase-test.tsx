@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/supabase/db';
 
 export const Route = createFileRoute('/supabase-test')({
   component: SupabaseTest,
@@ -20,7 +20,7 @@ function SupabaseTest() {
       const out: TableResult[] = [];
       for (const t of TABLES) {
         try {
-          const { data, error, count } = await supabase
+          const { data, error, count } = await db
             .from(t)
             .select('*', { count: 'exact' })
             .limit(3);

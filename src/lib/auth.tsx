@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/supabase/db';
 
 export type AppRole = 'superadmin' | 'admin' | 'staff';
 
@@ -16,8 +17,8 @@ interface AuthState {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 async function fetchRoles(userId: string): Promise<AppRole[]> {
-  const { data, error } = await supabase
-    .from('user_roles')
+  const { data, error } = await db
+    .from("user_roles")
     .select('role')
     .eq('user_id', userId);
   if (error || !data) return [];

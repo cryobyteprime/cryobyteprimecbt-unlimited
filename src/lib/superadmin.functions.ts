@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import type { AnyDb } from '@/integrations/supabase/db';
 
 // Public: ensure the superadmin account exists, using SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD secrets.
 // Safe to call from /auth — never returns the credentials.
@@ -9,7 +10,8 @@ export const ensureSuperadmin = createServerFn({ method: 'POST' }).handler(async
     return { ok: false, reason: 'missing_secrets' as const };
   }
 
-  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { supabaseAdmin: _sa } = await import('@/integrations/supabase/client.server');
+    const supabaseAdmin = _sa as unknown as AnyDb;
 
   // Already have any superadmin? Nothing to do.
   const { count } = await supabaseAdmin
