@@ -1,4 +1,4 @@
-import { supabase as sharedSupabase } from '../integrations/supabase/client';
+import { supabase as sharedSupabase } from '../integrations/supabase/external';
 import { 
   Student, 
   AttSession, 

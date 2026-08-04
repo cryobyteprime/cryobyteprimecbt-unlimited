@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { db } from '@/integrations/supabase/db';
+import { supabase } from '@/integrations/supabase/external';
+import { EXTERNAL_SUPABASE_URL } from '@/integrations/supabase/external-config';
 
 export const Route = createFileRoute('/supabase-test')({
   component: SupabaseTest,
@@ -20,7 +21,7 @@ function SupabaseTest() {
       const out: TableResult[] = [];
       for (const t of TABLES) {
         try {
-          const { data, error, count } = await db
+          const { data, error, count } = await supabase
             .from(t)
             .select('*', { count: 'exact' })
             .limit(3);
@@ -38,7 +39,7 @@ function SupabaseTest() {
     <div style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
       <h1 style={{ fontSize: 22, fontWeight: 700 }}>Supabase Connectivity Test</h1>
       <p style={{ color: '#555', marginBottom: 16 }}>
-        Reads via publishable key from <code>{import.meta.env.VITE_SUPABASE_URL || 'env SUPABASE_URL'}</code>.
+        Reads via publishable key from <code>{EXTERNAL_SUPABASE_URL}</code>.
       </p>
       {loading && <p>Running queries…</p>}
       {!loading && results.map((r) => (

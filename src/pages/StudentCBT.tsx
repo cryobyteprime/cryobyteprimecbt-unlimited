@@ -3,8 +3,8 @@ import {
   Award, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight,
   AlertCircle, Sparkles, BookOpen, Clock, FileCheck, Maximize, AlertOctagon
 } from 'lucide-react';
-import { supabase } from '../integrations/supabase/client';
-import { db } from '../integrations/supabase/db';
+import { supabase } from '../integrations/supabase/external';
+import { cbtLog, cbtResult, cbtStart, cbtSubmit } from '@/lib/cbt-rpc';
 import { DB } from '../lib/database';
 import { Student, Question, Result, ExamEligibility, ExamMonitoringSettings, DEFAULT_MONITORING } from '../types';
 import CodeAwareText from '../components/CodeAwareText';
@@ -314,7 +314,7 @@ export default function StudentCBT() {
 
     const student = currentStudentRef.current;
     if (student) {
-      db.rpc('student_cbt_log', {
+      cbtLog({
         p_email: student.email,
         p_action: `${category}: ${detail} (violation #${newCount} of ${max})`,
         p_reason: 'Automated exam integrity monitor',
@@ -530,7 +530,7 @@ export default function StudentCBT() {
     }
 
     try {
-      const { data, error } = await db.rpc('student_cbt_start', {
+      const { data, error } = await cbtStart({
         p_email: trimmedEmail,
         p_class_sn: trimmedSerial,
       });
@@ -577,7 +577,7 @@ export default function StudentCBT() {
         setLoginError(
           `Sign-in blocked — ${reasons.join(' and ')}. Contact your class coordinator if this is in error.`,
         );
-        db.rpc('student_cbt_log', {
+        cbtLog({
           p_email: student.email,
           p_action: `LOGIN_BLOCKED: ineligible sign-in attempt (examActivated=${!!res.examActivated}, eligible=${!!res.eligible})`,
           p_reason: 'Attendance/eligibility gate rejected sign-in',
@@ -619,7 +619,7 @@ export default function StudentCBT() {
           setAssessmentLabel(resumed.assessmentLabel || aType);
           setStage('quiz');
 
-          db.rpc('student_cbt_log', {
+          cbtLog({
             p_email: student.email,
             p_action: `EXAM_RESUME: Candidate resumed previous attempt (${resumed.questions.length} questions, ${remaining}s remaining)`,
             p_reason: 'Auto-resume after network/system interruption',
@@ -691,7 +691,7 @@ export default function StudentCBT() {
           });
         } catch {}
 
-        db.rpc('student_cbt_log', {
+        cbtLog({
           p_email: student.email,
           p_action: `EXAM_START: Candidate began exam session (${finalQuestions.length} questions, duration=${srvDuration}m)`,
           p_reason: 'Automated exam session tracker',
@@ -709,7 +709,7 @@ export default function StudentCBT() {
 
   const loadResultDetail = async (student: Student) => {
     try {
-      const { data, error } = await db.rpc('student_cbt_result', {
+      const { data, error } = await cbtResult({
         p_email: student.email,
         p_class_sn: student.classSN,
       });
@@ -782,7 +782,7 @@ export default function StudentCBT() {
     const attemptId = `alt-${Date.now()}`;
 
     try {
-      const { data, error } = await db.rpc('student_cbt_submit', {
+      const { data, error } = await cbtSubmit({
         p_email: student.email,
         p_class_sn: student.classSN,
         p_session_id: elig?.sessionId || 'active-session',
@@ -794,7 +794,7 @@ export default function StudentCBT() {
       }
       const scored: any = data;
 
-      db.rpc('student_cbt_log', {
+      cbtLog({
         p_email: student.email,
         p_action: `EXAM_SUBMIT: Candidate submitted exam — Reason: ${reason} | Score: ${scored.score}/${scored.totalQuestions} (${scored.percentage}%) | Tab violations: ${tabSwitchCountRef.current}${scored.alreadySubmitted ? ' | alreadySubmitted=true' : ''}`,
         p_reason: 'Automated exam session tracker',
@@ -823,7 +823,7 @@ export default function StudentCBT() {
           adjustedPercentage,
           penaltyPercent: MALPRACTICE_PENALTY_PERCENT,
         });
-        db.rpc('student_cbt_log', {
+        cbtLog({
           p_email: student.email,
           p_action: `MALPRACTICE_PENALTY_APPLIED: ${MALPRACTICE_PENALTY_PERCENT}% deduction — raw ${rawScore}/${scored.totalQuestions} (${rawPercentage}%) → adjusted ${adjustedScore}/${scored.totalQuestions} (${adjustedPercentage}%) after ${tabSwitchCountRef.current} violations`,
           p_reason: 'Force-submitted due to repeated malpractice violations',

@@ -1,16 +1,14 @@
 import { createServerFn } from '@tanstack/react-start';
-import type { AnyDb } from '@/integrations/supabase/db';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { requireExternalAuth } from '@/integrations/supabase/external-auth-middleware';
 
 const RoleEnum = z.enum(['superadmin', 'admin', 'staff']);
 
 // Public: tells the /auth page whether the bootstrap superadmin exists yet.
 export const hasBootstrapSuperadmin = createServerFn({ method: 'GET' }).handler(async () => {
   try {
-    const { supabaseAdmin: _sa } = await import('@/integrations/supabase/client.server');
-    const supabaseAdmin = _sa as unknown as AnyDb;
+    const { supabaseExternalAdmin: supabaseAdmin } = await import('@/integrations/supabase/external.server');
     const { count } = await supabaseAdmin
       .from('user_roles')
       .select('id', { count: 'exact', head: true })
@@ -26,7 +24,7 @@ export const hasBootstrapSuperadmin = createServerFn({ method: 'GET' }).handler(
 
 // Superadmin only: create a user + assign role.
 export const inviteUser = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireExternalAuth])
   .inputValidator((data: unknown) =>
     z.object({
       email: z.string().email().max(255),
@@ -36,13 +34,12 @@ export const inviteUser = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     // Authorize caller
-    const { data: isSuper, error: roleErr } = await (context.supabase as unknown as AnyDb)
-      .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' as any });
+    const { data: isSuper, error: roleErr } = await context.supabase
+      .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
     if (roleErr) throw new Error(roleErr.message);
     if (!isSuper) throw new Error('Forbidden: superadmin only');
 
-    const { supabaseAdmin: _sa } = await import('@/integrations/supabase/client.server');
-    const supabaseAdmin = _sa as unknown as AnyDb;
+    const { supabaseExternalAdmin: supabaseAdmin } = await import('@/integrations/supabase/external.server');
 
     const created = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
@@ -67,14 +64,13 @@ export const inviteUser = createServerFn({ method: 'POST' })
 
 // Superadmin only: list all users with roles.
 export const listUsers = createServerFn({ method: 'GET' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireExternalAuth])
   .handler(async ({ context }) => {
-    const { data: isSuper } = await (context.supabase as unknown as AnyDb)
-      .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' as any });
+    const { data: isSuper } = await context.supabase
+      .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
     if (!isSuper) throw new Error('Forbidden: superadmin only');
 
-    const { supabaseAdmin: _sa } = await import('@/integrations/supabase/client.server');
-    const supabaseAdmin = _sa as unknown as AnyDb;
+    const { supabaseExternalAdmin: supabaseAdmin } = await import('@/integrations/supabase/external.server');
     const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
     if (error) throw new Error(error.message);
     const { data: roles } = await supabaseAdmin.from('user_roles').select('user_id, role');
@@ -95,17 +91,16 @@ export const listUsers = createServerFn({ method: 'GET' })
 
 // Superadmin only: change a user's role (replace existing).
 export const setUserRole = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireExternalAuth])
   .inputValidator((data: unknown) =>
     z.object({ userId: z.string().uuid(), role: RoleEnum }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    const { data: isSuper } = await (context.supabase as unknown as AnyDb)
-      .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' as any });
+    const { data: isSuper } = await context.supabase
+      .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
     if (!isSuper) throw new Error('Forbidden: superadmin only');
 
-    const { supabaseAdmin: _sa } = await import('@/integrations/supabase/client.server');
-    const supabaseAdmin = _sa as unknown as AnyDb;
+    const { supabaseExternalAdmin: supabaseAdmin } = await import('@/integrations/supabase/external.server');
     await supabaseAdmin.from('user_roles').delete().eq('user_id', data.userId);
     const { error } = await supabaseAdmin.from('user_roles').insert({ user_id: data.userId, role: data.role });
     if (error) throw new Error(error.message);
@@ -114,16 +109,15 @@ export const setUserRole = createServerFn({ method: 'POST' })
 
 // Superadmin only: delete a user.
 export const deleteUser = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireExternalAuth])
   .inputValidator((data: unknown) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { data: isSuper } = await (context.supabase as unknown as AnyDb)
-      .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' as any });
+    const { data: isSuper } = await context.supabase
+      .rpc('has_role', { _user_id: context.userId, _role: 'superadmin' });
     if (!isSuper) throw new Error('Forbidden: superadmin only');
     if (data.userId === context.userId) throw new Error('Cannot delete your own account');
 
-    const { supabaseAdmin: _sa } = await import('@/integrations/supabase/client.server');
-    const supabaseAdmin = _sa as unknown as AnyDb;
+    const { supabaseExternalAdmin: supabaseAdmin } = await import('@/integrations/supabase/external.server');
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
     return { ok: true };

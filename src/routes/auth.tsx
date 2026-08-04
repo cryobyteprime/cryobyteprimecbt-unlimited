@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Sparkles, Lock, Mail, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/external';
 import { hasBootstrapSuperadmin } from '@/lib/users.functions';
 import { ensureSuperadmin } from '@/lib/superadmin.functions';
 
