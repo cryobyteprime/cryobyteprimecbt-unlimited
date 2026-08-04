@@ -17,8 +17,8 @@ interface AuthState {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 async function fetchRoles(userId: string): Promise<AppRole[]> {
-  const { data, error } = await supabase
-    .from('user_roles')
+  const { data, error } = await db
+    .from("user_roles")
     .select('role')
     .eq('user_id', userId);
   if (error || !data) return [];
