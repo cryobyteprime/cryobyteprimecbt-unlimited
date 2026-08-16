@@ -9,7 +9,12 @@ function url() {
 }
 
 function createAdminClient() {
-  const key = process.env['SERVICE_ROLE_KEY'] || process.env['SUPABASE_SERVICE_ROLE_KEY'];
+  // EXTERNAL_SERVICE_ROLE_KEY is the authoritative service-role key for the
+  // external project; SERVICE_ROLE_KEY is kept as a legacy fallback.
+  const key =
+    process.env['EXTERNAL_SERVICE_ROLE_KEY'] ||
+    process.env['SERVICE_ROLE_KEY'] ||
+    process.env['SUPABASE_SERVICE_ROLE_KEY'];
   if (!key) throw new Error('Missing SERVICE_ROLE_KEY secret for the external Supabase project.');
   return createClient<ExternalDatabase>(url(), key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
