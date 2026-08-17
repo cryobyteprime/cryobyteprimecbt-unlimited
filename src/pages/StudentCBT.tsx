@@ -1008,6 +1008,8 @@ export default function StudentCBT() {
             </span>
           </div>
           <button
+            type="button"
+            aria-label="Close warning"
             onClick={() => setShowTabWarning(false)}
             className="ml-4 shrink-0 text-white/80 hover:text-white cursor-pointer font-bold"
           >✕</button>

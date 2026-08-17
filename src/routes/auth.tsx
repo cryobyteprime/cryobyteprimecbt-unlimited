@@ -12,7 +12,14 @@ export const Route = createFileRoute('/auth')({
     meta: [
       { title: 'Sign in — CryoByte Prime Admin' },
       { name: 'description', content: 'Admin sign-in for the CryoByte Prime CBT and attendance portal.' },
+      { property: 'og:title', content: 'Sign in — CryoByte Prime Admin' },
+      { property: 'og:description', content: 'Admin sign-in for the CryoByte Prime CBT and attendance portal.' },
+      { property: 'og:url', content: 'https://cryobyteprimecbt-unlimited.lovable.app/auth' },
+      { name: 'twitter:title', content: 'Sign in — CryoByte Prime Admin' },
+      { name: 'twitter:description', content: 'Admin sign-in for the CryoByte Prime CBT and attendance portal.' },
+      { name: 'robots', content: 'noindex, follow' },
     ],
+    links: [{ rel: 'canonical', href: 'https://cryobyteprimecbt-unlimited.lovable.app/auth' }],
   }),
 });
 
@@ -95,7 +102,7 @@ function AuthPage() {
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-sm font-black tracking-wider uppercase">CryoBytePrime</h1>
+            <h1 className="text-sm font-black tracking-wider uppercase">CryoBytePrime Admin Sign In</h1>
             <p className="text-[10px] text-slate-400 font-mono tracking-wider mt-0.5">ADMIN CONSOLE ACCESS</p>
           </div>
         </Link>

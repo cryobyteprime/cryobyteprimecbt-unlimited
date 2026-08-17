@@ -6,6 +6,16 @@ import { EXTERNAL_SUPABASE_URL } from '@/integrations/supabase/external-config';
 export const Route = createFileRoute('/supabase-test')({
   component: SupabaseTest,
   ssr: false,
+  head: () => ({
+    meta: [
+      { title: 'Database Connectivity Test — CryoByte Prime' },
+      { name: 'description', content: 'Internal diagnostics page that checks live connectivity to the CryoByte Prime database tables and reports row counts.' },
+      { property: 'og:title', content: 'Database Connectivity Test — CryoByte Prime' },
+      { property: 'og:description', content: 'Internal diagnostics page that checks live connectivity to the CryoByte Prime database tables.' },
+      { property: 'og:url', content: 'https://cryobyteprimecbt-unlimited.lovable.app/supabase-test' },
+      { name: 'robots', content: 'noindex, nofollow' },
+    ],
+  }),
 });
 
 type TableResult = { table: string; count: number | null; sample: any[]; error?: string };

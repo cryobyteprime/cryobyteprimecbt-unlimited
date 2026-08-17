@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /auth
+Disallow: /reset-password
+Disallow: /supabase-test
+Disallow: /api/
+
+Sitemap: https://cryobyteprimecbt-unlimited.lovable.app/sitemap.xml

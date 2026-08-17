@@ -17,6 +17,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/3ORfMgc2bTbdq54urGZLlCDa6Op2/social-images/social-1781677132319-CryoBytePrime_WhatsApp.webp" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "CryoByte Prime" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "CryoByte Prime",
+              url: "https://cryobyteprimecbt-unlimited.lovable.app",
+            },
+            {
+              "@type": "WebSite",
+              name: "CryoByte Prime — Attendance & CBT",
+              url: "https://cryobyteprimecbt-unlimited.lovable.app",
+              publisher: { "@type": "Organization", name: "CryoByte Prime" },
+            },
+          ],
+        }),
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
