@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupabaseTestRouteImport } from './routes/supabase-test'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -20,6 +21,11 @@ import { Route as ApiPublicCronAutoSubmitExamsRouteImport } from './routes/api/p
 const SupabaseTestRoute = SupabaseTestRouteImport.update({
   id: '/supabase-test',
   path: '/supabase-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-test': typeof SupabaseTestRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/api/public/cron/auto-submit-exams': typeof ApiPublicCronAutoSubmitExamsRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-test': typeof SupabaseTestRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/api/public/cron/auto-submit-exams': typeof ApiPublicCronAutoSubmitExamsRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-test': typeof SupabaseTestRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/api/public/cron/auto-submit-exams': typeof ApiPublicCronAutoSubmitExamsRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/supabase-test'
     | '/admin'
     | '/api/public/cron/auto-submit-exams'
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/supabase-test'
     | '/admin'
     | '/api/public/cron/auto-submit-exams'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/supabase-test'
     | '/_authenticated/admin'
     | '/api/public/cron/auto-submit-exams'
@@ -112,6 +124,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupabaseTestRoute: typeof SupabaseTestRoute
   ApiPublicCronAutoSubmitExamsRoute: typeof ApiPublicCronAutoSubmitExamsRoute
 }
@@ -123,6 +136,13 @@ declare module '@tanstack/react-router' {
       path: '/supabase-test'
       fullPath: '/supabase-test'
       preLoaderRoute: typeof SupabaseTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -186,6 +206,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupabaseTestRoute: SupabaseTestRoute,
   ApiPublicCronAutoSubmitExamsRoute: ApiPublicCronAutoSubmitExamsRoute,
 }
