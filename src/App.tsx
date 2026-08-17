@@ -42,7 +42,7 @@ export default function App() {
             <Sparkles className="w-5 h-5" />
           </button>
           <div className="text-left font-sans">
-            <h1 className="text-sm font-black tracking-wider text-white leading-tight uppercase">CryoBytePrime</h1>
+            <h1 className="text-sm font-black tracking-wider text-white leading-tight uppercase">CryoBytePrime — Attendance &amp; CBT Portal</h1>
           </div>
         </div>
         <span className="text-[10px] bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl font-mono text-zinc-400">v4.0.0</span>
