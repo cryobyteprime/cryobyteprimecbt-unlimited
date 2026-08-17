@@ -10,7 +10,14 @@ export const Route = createFileRoute('/reset-password')({
     meta: [
       { title: 'Reset password — CryoByte Prime Admin' },
       { name: 'description', content: 'Set a new password for your CryoByte Prime admin account.' },
+      { property: 'og:title', content: 'Reset password — CryoByte Prime Admin' },
+      { property: 'og:description', content: 'Set a new password for your CryoByte Prime admin account.' },
+      { property: 'og:url', content: 'https://cryobyteprimecbt-unlimited.lovable.app/reset-password' },
+      { name: 'twitter:title', content: 'Reset password — CryoByte Prime Admin' },
+      { name: 'twitter:description', content: 'Set a new password for your CryoByte Prime admin account.' },
+      { name: 'robots', content: 'noindex, follow' },
     ],
+    links: [{ rel: 'canonical', href: 'https://cryobyteprimecbt-unlimited.lovable.app/reset-password' }],
   }),
 });
 
@@ -59,7 +66,7 @@ function ResetPasswordPage() {
           <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/35 flex items-center justify-center text-cyan-400">
             <Sparkles className="w-5 h-5" />
           </div>
-          <h1 className="text-sm font-black tracking-wider uppercase">CryoBytePrime</h1>
+          <h1 className="text-sm font-black tracking-wider uppercase">CryoBytePrime Password Reset</h1>
         </Link>
         <Link to="/auth" className="text-xs text-slate-400 hover:text-cyan-400">← Sign in</Link>
       </header>
