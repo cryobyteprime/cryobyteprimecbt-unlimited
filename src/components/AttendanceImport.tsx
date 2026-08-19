@@ -19,6 +19,8 @@ type ParsedRow = {
   classSN: string;
   status: string;
   round?: string;
+  email?: string;
+  name?: string;
 };
 
 type Validated =
@@ -42,6 +44,10 @@ function normalizeRound(s?: string): '1' | '2' | null {
   return null;
 }
 
+const norm = (s?: string) => String(s ?? '').trim().toLowerCase();
+const normName = (s?: string) => norm(s).replace(/\s+/g, ' ');
+const normSN = (s?: string) => String(s ?? '').trim().toUpperCase().replace(/\s+/g, '');
+
 export default function AttendanceImport({ session, students, onClose, onImported, triggerAuditLog, adminEmail }: Props) {
   const [fileName, setFileName] = useState('');
   const [rows, setRows] = useState<ParsedRow[]>([]);
@@ -58,8 +64,13 @@ export default function AttendanceImport({ session, students, onClose, onImporte
     return rows.map((row) => {
       const status = normalizeStatus(row.status);
       if (!status) return { kind: 'bad-status', row };
-      const sn = (row.classSN || '').trim().toUpperCase();
-      const student = students.find((s) => (s.classSN || '').toUpperCase() === sn);
+      const sn = normSN(row.classSN);
+      const email = norm(row.email);
+      const name = normName(row.name);
+      const student =
+        (email ? students.find((s) => norm(s.email) === email) : undefined) ||
+        (sn ? students.find((s) => normSN(s.classSN) === sn) : undefined) ||
+        (name ? students.find((s) => normName(s.name) === name) : undefined);
       if (!student) return { kind: 'unmatched', row };
       if (session.class !== 'Joint' && student.class !== session.class) {
         return { kind: 'wrong-class', row, student };
@@ -99,13 +110,15 @@ export default function AttendanceImport({ session, students, onClose, onImporte
         };
         return {
           rowNum: i + 2, // header is row 1
-          classSN: find(['classsn', 'class sn', 'serial', 'sn']),
-          status: find(['status', 'attendance']),
+          classSN: find(['classsn', 'class sn', 'class_sn', 'serial', 'serial number', 'sn', 's/n']),
+          status: find(['status', 'attendance', 'attendance status', 'present']),
           round: find(['round', 'r']) || undefined,
+          email: find(['email', 'e-mail', 'email address', 'mail']) || undefined,
+          name: find(['name', 'full name', 'fullname', 'student name', 'student']) || undefined,
         };
-      }).filter((r) => r.classSN || r.status);
+      }).filter((r) => r.classSN || r.status || r.email || r.name);
       if (parsed.length === 0) {
-        setParseError('No rows found. Expected columns: classSN, status (optional: round).');
+        setParseError('No rows found. Expected a header row with: classSN (or email / name) and status. Optional: round.');
         return;
       }
       setRows(parsed);
