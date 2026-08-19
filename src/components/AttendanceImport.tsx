@@ -19,6 +19,8 @@ type ParsedRow = {
   classSN: string;
   status: string;
   round?: string;
+  email?: string;
+  name?: string;
 };
 
 type Validated =
@@ -42,6 +44,10 @@ function normalizeRound(s?: string): '1' | '2' | null {
   return null;
 }
 
+const norm = (s?: string) => String(s ?? '').trim().toLowerCase();
+const normName = (s?: string) => norm(s).replace(/\s+/g, ' ');
+const normSN = (s?: string) => String(s ?? '').trim().toUpperCase().replace(/\s+/g, '');
+
 export default function AttendanceImport({ session, students, onClose, onImported, triggerAuditLog, adminEmail }: Props) {
   const [fileName, setFileName] = useState('');
   const [rows, setRows] = useState<ParsedRow[]>([]);
@@ -58,8 +64,13 @@ export default function AttendanceImport({ session, students, onClose, onImporte
     return rows.map((row) => {
       const status = normalizeStatus(row.status);
       if (!status) return { kind: 'bad-status', row };
-      const sn = (row.classSN || '').trim().toUpperCase();
-      const student = students.find((s) => (s.classSN || '').toUpperCase() === sn);
+      const sn = normSN(row.classSN);
+      const email = norm(row.email);
+      const name = normName(row.name);
+      const student =
+        (email ? students.find((s) => norm(s.email) === email) : undefined) ||
+        (sn ? students.find((s) => normSN(s.classSN) === sn) : undefined) ||
+        (name ? students.find((s) => normName(s.name) === name) : undefined);
       if (!student) return { kind: 'unmatched', row };
       if (session.class !== 'Joint' && student.class !== session.class) {
         return { kind: 'wrong-class', row, student };
@@ -99,13 +110,15 @@ export default function AttendanceImport({ session, students, onClose, onImporte
         };
         return {
           rowNum: i + 2, // header is row 1
-          classSN: find(['classsn', 'class sn', 'serial', 'sn']),
-          status: find(['status', 'attendance']),
+          classSN: find(['classsn', 'class sn', 'class_sn', 'serial', 'serial number', 'sn', 's/n']),
+          status: find(['status', 'attendance', 'attendance status', 'present']),
           round: find(['round', 'r']) || undefined,
+          email: find(['email', 'e-mail', 'email address', 'mail']) || undefined,
+          name: find(['name', 'full name', 'fullname', 'student name', 'student']) || undefined,
         };
-      }).filter((r) => r.classSN || r.status);
+      }).filter((r) => r.classSN || r.status || r.email || r.name);
       if (parsed.length === 0) {
-        setParseError('No rows found. Expected columns: classSN, status (optional: round).');
+        setParseError('No rows found. Expected a header row with: classSN (or email / name) and status. Optional: round.');
         return;
       }
       setRows(parsed);
@@ -168,7 +181,7 @@ export default function AttendanceImport({ session, students, onClose, onImporte
           <div className="bg-cyan-50/40 border border-cyan-100 rounded-xl p-3.5 text-[11px] text-slate-700">
             <p className="font-bold text-slate-800 mb-1">Expected columns (header row required):</p>
             <ul className="list-disc list-inside space-y-0.5 text-slate-600">
-              <li><code className="font-mono text-cyan-700">classSN</code> — student serial (e.g. A12, B5)</li>
+              <li><code className="font-mono text-cyan-700">classSN</code> — student serial (e.g. A12, B5) <span className="text-slate-400">or</span> <code className="font-mono text-cyan-700">email</code> <span className="text-slate-400">or</span> <code className="font-mono text-cyan-700">name</code></li>
               <li><code className="font-mono text-cyan-700">status</code> — present / late / absent</li>
               <li><code className="font-mono text-cyan-700">round</code> <span className="text-slate-400">(optional)</span> — 1 or 2</li>
             </ul>
@@ -224,7 +237,7 @@ export default function AttendanceImport({ session, students, onClose, onImporte
                   <thead className="bg-slate-50 sticky top-0 text-[9px] font-mono uppercase text-slate-500 border-b border-slate-200">
                     <tr>
                       <th className="p-2 text-left">Row</th>
-                      <th className="p-2 text-left">classSN</th>
+                      <th className="p-2 text-left">Identifier</th>
                       <th className="p-2 text-left">Status</th>
                       <th className="p-2 text-left">Round</th>
                       <th className="p-2 text-left">Resolution</th>
@@ -234,7 +247,7 @@ export default function AttendanceImport({ session, students, onClose, onImporte
                     {validated.map((v, i) => (
                       <tr key={i} className={v.kind === 'ok' ? '' : 'bg-amber-50/40'}>
                         <td className="p-2 font-mono text-slate-400">{v.row.rowNum}</td>
-                        <td className="p-2 font-mono font-bold">{v.row.classSN}</td>
+                        <td className="p-2 font-mono font-bold">{v.row.classSN || v.row.email || v.row.name || '—'}</td>
                         <td className="p-2">{v.row.status || '—'}</td>
                         <td className="p-2 font-mono">{v.row.round || '—'}</td>
                         <td className="p-2">
@@ -242,7 +255,7 @@ export default function AttendanceImport({ session, students, onClose, onImporte
                             <span className="text-green-700">✓ {v.student.name} → {v.status}{v.round ? ` (R${v.round})` : ''}</span>
                           )}
                           {v.kind === 'bad-status' && <span className="text-rose-600">Invalid status</span>}
-                          {v.kind === 'unmatched' && <span className="text-rose-600">No student with that serial</span>}
+                          {v.kind === 'unmatched' && <span className="text-rose-600">No student matched by serial, email or name</span>}
                           {v.kind === 'wrong-class' && (
                             <span className="text-amber-700">Skipped — {v.student.name} is in {v.student.class}, not {session.class}</span>
                           )}

@@ -404,6 +404,14 @@ export default function Attendance({
                               View Records
                             </button>
                             <button
+                              onClick={() => setImportSession(s)}
+                              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-cyan-700 text-[11px] font-bold border border-cyan-200 flex items-center space-x-1 transition-colors cursor-pointer"
+                              title="Import attendance from CSV / Excel"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>Import</span>
+                            </button>
+                            <button
                               onClick={() => handleReopenSession(s)}
                               className="p-1.5 text-slate-400 hover:text-cyan-500 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"
                               title="Re-open Session"
